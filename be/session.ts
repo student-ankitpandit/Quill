@@ -24,6 +24,7 @@ export interface Session {
     pendingToolCallId?: string;
     branch?: string;
     prUrl?: string;
+    repoPath: string
 }
 
 export interface LogEntry {
@@ -46,15 +47,15 @@ export function setStatus(session: Session, status: Session['status']) {
     })
 }
 
-const sessionFile = path.join(import.meta.dir, 'data', 'sessions.json');
+const SESSIONFILE = path.join(import.meta.dir, 'data', 'sessions.json');
 
 async function readSessions(): Promise<Record<string, Session>> {
     try {
-        return JSON.parse(await fs.readFile(sessionFile, 'utf-8'));
+        return JSON.parse(await fs.readFile(SESSIONFILE, 'utf-8'));
     } catch (err: any) {
     if (err.code === 'ENOENT') {
-        await fs.mkdir(path.dirname(sessionFile), { recursive: true });
-        await fs.writeFile(sessionFile, '{}');
+        await fs.mkdir(path.dirname(SESSIONFILE), { recursive: true });
+        await fs.writeFile(SESSIONFILE, '{}');
         return {};
     }
     throw err;
@@ -64,7 +65,7 @@ async function readSessions(): Promise<Record<string, Session>> {
 export async function saveSession(session: Session) {
     const all = await readSessions();
     all[session.id] = session;
-    await fs.writeFile(sessionFile, JSON.stringify(all, null, 2));
+    await fs.writeFile(SESSIONFILE, JSON.stringify(all, null, 2));
 }
 
 export async function getSession(sessionId: string) {
@@ -77,4 +78,24 @@ export async function listSessions(installationId: string) {
     return Object.values(allSessions)
     .filter(s => s.installationId == installationId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export async function deleteSession(id: string) {
+  const data = JSON.parse(await fs.readFile(SESSIONFILE, 'utf8'));
+  const next = Array.isArray(data) ? data.filter((s) => s.id !== id) : (delete data[id], data);
+  await fs.writeFile(SESSIONFILE, JSON.stringify(next, null, 2));
+}
+
+export async function appendLog(
+  sessionId: string,
+  entry: { kind: string; payload: string }
+) {
+  const session = await getSession(sessionId);
+  if (!session) return;
+
+  const log = { ...entry, ts: new Date().toISOString() };
+  session.logs.push(log);
+  await saveSession(session);
+
+  bus.emit(`log:${sessionId}`, { id: session.logs.length - 1, ...log });
 }

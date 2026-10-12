@@ -69,7 +69,7 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
   },
 ];
 
-async function executeTool(sandbox: Sandbox, name: string, input: any): Promise<string> {
+export async function executeTool(sandbox: Sandbox, name: string, input: any): Promise<string> {
   try {
     if (name === 'run_command') {
       const r = await sandbox.commands.run(input.command, { cwd: REPO_DIR, timeoutMs: 120_000 });
@@ -129,7 +129,6 @@ async function publishChanges(sandbox: Sandbox, session: Session, summary: strin
       repo,
       head: session.branch!,
       base: repoInfo.default_branch,
-      title: `Fix #${session.issueNumber}: ${session.issueTitle}`,
       body: `${summary}\n\nCloses #${session.issueNumber}`,
     });
     session.prUrl = pr.html_url;
