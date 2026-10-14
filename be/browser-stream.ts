@@ -8,8 +8,8 @@ export const RELAY_PORT = 9223
 
 export const ensureRelay = async (sandbox: Sandbox, sessionId: string, targetUrl:string) => {
     if (relayStarted.has(sessionId)) return;
-    await sandbox.files.write('/home/user/browser-relay.js', RELAY_SCRIPT);
-    await sandbox.commands.run('cd /home/user && node browser-relay.js', {
+    await sandbox.files.write('/home/user/repo/browser-relay.js', RELAY_SCRIPT);
+    await sandbox.commands.run('cd /home/user/repo && node browser-relay.js', {
         background: true,
         envs: { TARGET_URL: targetUrl }
     })

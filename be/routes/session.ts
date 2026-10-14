@@ -9,12 +9,12 @@ import { ensureRelay } from "../browser-stream";
 const router = Router();
 
 async function loadOwned(req: Request, res: Response): Promise<Session | null> {
-  const session = await getSession(req.params.id as string);
-  if (!session || session.installationId !== req.installationId) {
-    res.sendStatus(404);
-    return null;
-  }
-  return session;
+    const session = await getSession(req.params.id as string);
+    if (!session || session.installationId !== req.installationId) {
+        res.sendStatus(404);
+        return null;
+    }
+    return session;
 }
 
 async function waitForPort(
@@ -41,7 +41,7 @@ async function waitForPort(
 // POST /api/app/sessions/:id/preview
 // Starts the repo's dev server in the background, then the browser relay.
 router.post("/:id/preview", async (req, res) => {
-    const session = loadOwned(req, res);
+    const session = await loadOwned(req, res);
     if (!session) return;
 
     if (session.previewStarted) return res.json({ ready: true });
@@ -75,33 +75,33 @@ router.post("/:id/preview", async (req, res) => {
             .status(504)
             .json({ error: "Dev server did not come up within 60s." });
 
-    await ensureRelay(sandbox, `http://localhost:${port}`);
+    await ensureRelay(sandbox, session.id, `http://localhost:${port}`);
 
     session.previewStarted = true;
     saveSession(session);
     res.json({ ready: true });
-  } catch (err) {
-    console.error("preview failed", err);
-    res.status(500).json({ error: "Failed to start preview." });
-  }
+    } catch (err) {
+        console.error("preview failed", err);
+        res.status(500).json({ error: "Failed to start preview." });
+    }
 });
 
 // DELETE /api/app/sessions/:id
 // Kills the sandbox (stops billing) and removes the session.
 router.delete("/:id", async (req, res) => {
-  const session = loadOwned(req, res);
-  if (!session) return;
+    const session = await loadOwned(req, res);
+    if (!session) return;
 
-  setStatus(session, "stopped");
+    setStatus(session, "stopped");
 
-  try {
-    await Sandbox.kill(session.sandboxId);
-  } catch {
-    
-  }
+    try {
+        await Sandbox.kill(session.sandboxId);
+    } catch {
+        
+    }
 
-  deleteSession(session.id);
-  res.sendStatus(204);
+    deleteSession(session.id);
+    res.sendStatus(204);
 });
 
 export default router;

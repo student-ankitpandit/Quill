@@ -25,6 +25,7 @@ export interface Session {
     branch?: string;
     prUrl?: string;
     repoPath: string
+    previewStarted: boolean
 }
 
 export interface LogEntry {
@@ -81,21 +82,19 @@ export async function listSessions(installationId: string) {
 }
 
 export async function deleteSession(id: string) {
-  const data = JSON.parse(await fs.readFile(SESSIONFILE, 'utf8'));
-  const next = Array.isArray(data) ? data.filter((s) => s.id !== id) : (delete data[id], data);
-  await fs.writeFile(SESSIONFILE, JSON.stringify(next, null, 2));
+    const data = JSON.parse(await fs.readFile(SESSIONFILE, 'utf8'));
+    const next = Array.isArray(data) ? data.filter((s) => s.id !== id) : (delete data[id], data);
+    await fs.writeFile(SESSIONFILE, JSON.stringify(next, null, 2));
 }
 
 export async function appendLog(
-  sessionId: string,
-  entry: { kind: string; payload: string }
-) {
-  const session = await getSession(sessionId);
-  if (!session) return;
+    sessionId: string,
+    entry: { kind: string; payload: string }
+    ) {
+    const session = await getSession(sessionId);
+    if (!session) return;
 
-  const log = { ...entry, ts: new Date().toISOString() };
-  session.logs.push(log);
-  await saveSession(session);
-
-  bus.emit(`log:${sessionId}`, { id: session.logs.length - 1, ...log });
+    const type: LogEntry['type'] = entry.kind === 'error' ? 'error' : 'info';
+    log(session, type, entry.payload);
+    await saveSession(session);
 }

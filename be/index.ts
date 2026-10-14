@@ -16,12 +16,12 @@ import { stopRequests } from "./agent";
 import { subscribe } from "./events";
 import { connectUpStream, ensureRelay, RELAY_PORT } from "./browser-stream";
 import { Readable } from "node:stream";
-import sessionRoutes from "./routes/session"
+import sessionRoutes from "./routes/session";
 
 const app = express();
 app.use(express.json());
 
-app.use("/api/app/sessions", sessionRoutes)
+app.use("/api/app/sessions", sessionRoutes);
 
 // app.use('/internal/sandbox', internalRoutes); //didn't going to until the agent loop in a seprated worker
 
@@ -248,6 +248,8 @@ app.post("/api/app/sessions", async (req, res) => {
       createdAt: new Date().toISOString(),
       messages: [],
       logs: [],
+      repoPath: "/home/user/repo",
+      previewStarted: false,
     };
     await saveSession(session);
 
