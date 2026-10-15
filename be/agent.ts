@@ -90,7 +90,7 @@ export async function executeTool(sandbox: Sandbox, name: string, input: any): P
 
 // First run: creates a branch, pushes, opens the PR.
 // Later runs (follow-ups): commit and push to the same branch; the PR updates itself.
-async function publishChanges(sandbox: Sandbox, session: Session, summary: string) {
+export async function publishChanges(sandbox: Sandbox, session: Session, summary: string) {
   const run = (cmd: string) => sandbox.commands.run(cmd, { cwd: REPO_DIR });
 
   const status = await run('git status --porcelain');

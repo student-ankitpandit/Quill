@@ -8,7 +8,7 @@ import {
 import { getSession, listSessions, saveSession } from "./session";
 import type { Session } from "./session";
 import { storage, type InstallationData } from "./storage";
-import { saveRepoConfig } from "./repo-config";
+import { getRepoConfig, saveRepoConfig } from "./repo-config";
 import axios from "axios";
 import Sandbox from "@e2b/code-interpreter";
 import { randomUUID } from "node:crypto";
@@ -17,6 +17,13 @@ import { subscribe } from "./events";
 import { connectUpStream, ensureRelay, RELAY_PORT } from "./browser-stream";
 import { Readable } from "node:stream";
 import sessionRoutes from "./routes/session";
+import { loadOwned }from "./lib"
+import { publishChanges } from "./agent"
+
+const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
+const REPO_DIR = '/home/user/repo';
+const SAFE = /^[\w-]+$/; 
+const publishing = new Set<string>(); 
 
 const app = express();
 app.use(express.json());
@@ -25,7 +32,6 @@ app.use("/api/app/sessions", sessionRoutes);
 
 // app.use('/internal/sandbox', internalRoutes); //didn't going to until the agent loop in a seprated worker
 
-const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
 
 app.get("/health", (req, res) => {
   res.send({ message: "healthy" });
@@ -481,6 +487,101 @@ app.get("/api/sessions/:sessionId/stream", async (req, res) => {
   }
 });
 
-app.listen(3001, () => {
+app.post("/api/app/sessions/:sessionId/pull-request", async (req, res) => {
+  const session = await loadOwned(req, res)
+  if(!session) return
+  
+  if(session.status === "running") {
+    return res.status(409).json({
+      error: "Agent is still running"
+    })
+  }
+
+  if(publishing.has(session.id)) {
+    return res.status(409).json({
+      error: "Agent publishing"
+    })
+  }
+
+  publishing.add(session.id)
+
+  const sandbox = await Sandbox.connect(session.sandboxId)
+  
+  try {
+    const { stdout } = await sandbox.commands.run('git status --porcelain', { cwd: REPO_DIR })
+
+    if(!stdout.trim()) {
+      return session.prUrl ? res.json({ prUrl: session.prUrl }) : res.status(409).json({ error: 'No changes to publish.' });
+    }
+
+    const summary = "";
+      await publishChanges(sandbox, session, summary);
+      const prUrl = session.prUrl;
+    
+    session.prUrl = prUrl;
+    await saveSession(session);
+    res.status(201).json({ prUrl });
+  } catch (e) {
+    console.log("Pull-request failed: ", e)
+    res.status(500).json({ error: "Failed to create pull request" })
+  } finally {
+    publishing.delete(session.id)
+  }
+})
+
+app.post("/api/app/sessions/:sessionId/deploy", async (req, res) => {
+    const session = await loadOwned(req, res)
+    if(!session) return
+
+    if(session.status === "running") {
+      return res.status(409).json({ error: "Agent is still running" })
+    }
+
+    const target = req.body?.target === 'vercel' ? 'vercel' : 'preview';
+  
+    try {
+      const sandbox = await Sandbox.connect(session.sandboxId);
+  
+      if (target === 'preview') {
+        if (!session.previewStarted) {
+          return res.status(409).json({ error: 'Start the preview first.' });
+        }
+        const config = await getRepoConfig(session.installationId, session.repoFullName);
+        const port = Number(config?.port);
+        return res.json({ url: `https://${sandbox.getHost(port)}`, temporary: true });
+      }
+  
+      // Needs the vercel CLI inside the E2B template (npm i -g vercel).
+      const token = process.env.VERCEL_TOKEN;
+      if (!token) {
+        return res.status(501).json({ error: 'Vercel deploy is not configured on the server.' });
+      }
+  
+      const project = ('agent-' + session.repoFullName.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+        .replace(/-+$/, '')
+        .slice(0, 100);
+      if (!SAFE.test(project)) return res.status(500).json({ error: 'Bad project name.' });
+  
+      const opts = { cwd: REPO_DIR, envs: { VERCEL_TOKEN: token } };
+  
+      await sandbox.commands.run(`vercel link --yes --project ${project}`, { ...opts, timeoutMs: 2 * 60_000 });
+      const out = await sandbox.commands.run('vercel deploy --yes', { ...opts, timeoutMs: 10 * 60_000 });
+  
+      const match = out.stdout.match(/https:\/\/[^\s]+\.vercel\.app/);
+      if (!match) return res.status(502).json({ error: 'Deployed, but could not read the URL.' });
+  
+      session.deployUrl = match[0];
+      await saveSession(session);
+      res.json({ url: session.deployUrl, temporary: false });
+    } catch (err: any) {
+      console.error('Deploy failed', err);
+      res.status(500).json({
+        error: 'Deploy failed.',
+        detail: String(err.stderr ?? err.message).slice(-500),
+      });
+    }
+});
+
+app.listen(3001, '0.0.0.0', () => {
   console.log("server is up and running on port 3000");
 });

@@ -26,6 +26,7 @@ export interface Session {
     prUrl?: string;
     repoPath: string
     previewStarted: boolean
+    deployUrl?: string
 }
 
 export interface LogEntry {

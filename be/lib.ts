@@ -1,7 +1,10 @@
 import axios from "axios";
 import jwt from "jsonwebtoken"
 import { Octokit } from "octokit"
-
+import type { Request, Response } from "express";
+import { Sandbox } from "e2b";
+import { getSession } from "./session";
+import type { Session } from "./session";
 
 type GithubTokenResponse = {
     access_token: string;
@@ -109,4 +112,34 @@ export async function getInstallationToken(installationId: string): Promise<stri
 export async function getInstallationOctokit(installationId: string): Promise<Octokit> {
     const token = await getInstallationToken(installationId);
     return new Octokit({ auth: token });
+}
+
+export async function loadOwned(req: Request, res: Response): Promise<Session | null> {
+    const session = await getSession(req.params.id as string);
+    if (!session || session.installationId !== req.installationId) {
+        res.sendStatus(404);
+        return null;
+    }
+    return session;
+}
+
+export async function waitForPort(
+    sandbox: Sandbox,
+    port: number,
+    timeoutMs = 60_000,
+    ): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        try {
+        // curl exits non-zero (and run() throws) while nothing is listening yet
+            await sandbox.commands.run(
+                `curl -s -o /dev/null http://localhost:${port}`,
+                { timeoutMs: 5_000 },
+            );
+            return true;
+        } catch {
+            await new Promise((r) => setTimeout(r, 1_000));
+        }
+    }
+    return false;
 }

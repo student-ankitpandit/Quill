@@ -8,6 +8,7 @@ export interface RepoConfig {
   runCommand?: string;
   installCommand?: string;
   port?: number;
+  hasUI?: boolean
 }
 interface DB {
   [key: string]: RepoConfig; // keyed by `${installationId}:${repoFullName}`
