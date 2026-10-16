@@ -583,5 +583,5 @@ app.post("/api/app/sessions/:sessionId/deploy", async (req, res) => {
 });
 
 app.listen(3001, '0.0.0.0', () => {
-  console.log("server is up and running on port 3000");
+  console.log("server is up and running on port 3001");
 });
