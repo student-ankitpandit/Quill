@@ -3,6 +3,7 @@ import type { LogEntry, Session } from "./session";
 
 export type SessionEvent =
     | { type: "log"; id: number; data: LogEntry }
+    | { type: "message"; id?: undefined; data: { role: "user" | "assistant"; content: string } }
     | {
         type: "status";
         id?: undefined;

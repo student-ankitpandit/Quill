@@ -2,7 +2,8 @@ import fs from "fs"
 import { Sandbox } from "e2b"
 import path from "node:path"
 
-const RELAY_SCRIPT = fs.readFileSync(path.join(import.meta.dirname, 'browser-relay.js'), "utf-8")
+let RELAY_SCRIPT = "";
+try { RELAY_SCRIPT = fs.readFileSync(path.join(import.meta.dirname, 'browser-relay.js'), "utf-8"); } catch {}
 const relayStarted = new Set<string>() //in-memory set
 export const RELAY_PORT = 9223
 

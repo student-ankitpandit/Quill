@@ -24,8 +24,12 @@ export interface Session {
     pendingToolCallId?: string;
     branch?: string;
     prUrl?: string;
+    prBaseBranch?: string;
+    prMergedAt?: string;
+    prMergeCommitSha?: string;
     repoPath: string
     previewStarted: boolean
+    previewStarting?: boolean
     deployUrl?: string
 }
 
@@ -35,8 +39,16 @@ export interface LogEntry {
     text: string;
 }
 
+export function redactSensitiveText(text: string): string {
+    return text
+        .replace(/https:\/\/x-access-token:[^@\s'\"]+@github\.com/gi, 'https://x-access-token:[REDACTED]@github.com')
+        .replace(/\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, '[REDACTED_GITHUB_TOKEN]')
+        .replace(/\bgh[opsur]_[A-Za-z0-9_]{20,}\b/g, '[REDACTED_GITHUB_TOKEN]')
+        .replace(/(Authorization:\s*Bearer\s+)[A-Za-z0-9._-]+/gi, '$1[REDACTED]');
+}
+
 export function log(session: Session, type: LogEntry['type'], text: string) {
-    const entry = { time: new Date().toISOString(), type, text: text.slice(0, 2000) };
+    const entry = { time: new Date().toISOString(), type, text: redactSensitiveText(text).slice(0, 2000) };
     session.logs.push(entry)
     publish(session.id, { type: "log", id: session.logs.length -1, data: entry })
 }

@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
+    "target": "ESNext",
     "jsx": "react-jsx",
     "allowJs": true,
+    "skipLibCheck": true,
 
     // Bundler mode
     "moduleResolution": "bundler",
@@ -9,9 +11,9 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
-    "ignoreDeprecations": "6.0",
 
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./src/*"]
     }

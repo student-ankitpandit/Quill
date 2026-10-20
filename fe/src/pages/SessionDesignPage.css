@@ -1,0 +1,673 @@
+.quill-workspace {
+  display: grid !important;
+  grid-template-columns: 272px minmax(0, 1fr);
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  background: #101010;
+  color: #f1f1f3;
+}
+
+.quill-workspace .qw-sidebar,
+.quill-workspace .qw-main {
+  display: flex !important;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.quill-workspace .qw-sidebar {
+  width: 374px;
+  border-right: 1px solid #252528;
+  background: #121212;
+}
+
+/* The shared sidebar is rendered on both dashboard and session routes. Keep
+   its brand and primary action crisp and fully visible over the workspace. */
+.quill-workspace aside.sidebar .brand,
+.quill-workspace aside.sidebar .brand-name,
+.quill-workspace aside.sidebar .logo,
+.quill-workspace aside.sidebar > .btn-primary {
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+.quill-workspace aside.sidebar .brand-name {
+  color: #f4f4f5 !important;
+  font-weight: 750;
+  -webkit-font-smoothing: antialiased;
+}
+
+.quill-workspace aside.sidebar .logo {
+  background: #ff8a1f !important;
+  color: #17110a !important;
+}
+
+.quill-workspace aside.sidebar > .btn-primary:enabled {
+  background: #ff8a1f !important;
+  color: #17110a !important;
+  font-weight: 700;
+  -webkit-font-smoothing: antialiased;
+}
+
+.quill-workspace aside.sidebar > .btn-primary:enabled:hover {
+  background: #ff9b3d !important;
+}
+
+.quill-workspace .qw-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  min-height: 56px;
+  padding: 0 20px;
+  color: #f2f2f4;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.quill-workspace .qw-brand-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  background: #ff8a1f;
+  color: #17110a;
+  font-size: 17px;
+}
+
+.quill-workspace .qw-new-session {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: calc(100% - 24px);
+  height: 42px;
+  min-height: 42px;
+  margin: 0 12px 20px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent !important;
+  color: #e7e7e9;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quill-workspace .qw-new-session:hover,
+.quill-workspace .qw-section-heading button:hover {
+  background: #1d1d20 !important;
+}
+
+.quill-workspace .qw-new-session svg,
+.quill-workspace .qw-section-heading button svg {
+  flex: 0 0 auto;
+  color: #b7b7bc;
+}
+
+.quill-workspace .qw-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+  min-height: 38px;
+  margin: 0 10px;
+  padding: 0 10px;
+  color: #dedee1;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.quill-workspace .qw-section-heading button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.quill-workspace .qw-recent-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 20px;
+  color: #88888e;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.quill-workspace .qw-session-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+  padding: 0 10px 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-color: #39393e transparent;
+  scrollbar-width: thin;
+}
+
+.quill-workspace button.qw-session-item {
+  display: grid !important;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  margin: 0;
+  padding: 8px 18px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #e7e7e9;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quill-workspace button.qw-session-item:hover {
+  background: #1b1b1e;
+}
+
+.quill-workspace button.qw-session-item[aria-current="true"],
+.quill-workspace button.qw-session-item[class*="bg-white/[0.07]"] {
+  border-color: #29292d;
+  background: #1c1c1f;
+  box-shadow: inset 2px 0 #ff8a1f;
+}
+
+.quill-workspace .qw-session-status {
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin: 0;
+  border-radius: 50%;
+}
+
+.quill-workspace .qw-session-copy {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.quill-workspace .qw-session-title,
+.quill-workspace .qw-session-repo {
+  display: block !important;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quill-workspace .qw-session-title {
+  color: #e7e7e9;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.quill-workspace .qw-session-repo {
+  color: #85858b;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.quill-workspace .qw-header {
+  display: flex;
+  flex: 0 0 68px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  height: 68px;
+  padding: 0 20px;
+  border-bottom: 1px solid #252528;
+  background: #101010;
+}
+
+.quill-workspace .qw-header > div:first-child,
+.quill-workspace .qw-header > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quill-workspace .qw-header > div:first-child {
+  min-width: 0;
+}
+
+.quill-workspace .qw-content {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.quill-workspace .qw-thread {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.quill-workspace .qw-loading-simple {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #a3a3a3;
+  font-size: 14px;
+}
+
+.quill-workspace .qw-messages {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #39393e transparent;
+  scrollbar-width: thin;
+}
+
+.quill-workspace .qw-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 6px 0 18px;
+  overflow-wrap: anywhere;
+}
+
+.quill-workspace .qw-user-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.quill-workspace .qw-user-bubble {
+  max-width: min(82%, 680px);
+  padding: 10px 15px;
+  border: 1px solid #2d2d31;
+  border-radius: 18px;
+  background: #202023;
+  color: #f0f0f2;
+  font-size: 15px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.quill-workspace .qw-assistant-message {
+  max-width: 100%;
+  color: #e1e1e4;
+  font-size: 15px;
+  line-height: 1.68;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.quill-workspace .qw-message-list details {
+  padding: 12px 14px;
+  border: 1px solid #29292d;
+  border-radius: 10px;
+  background: #151517;
+  color: #9a9aa1;
+  font-size: 12px;
+}
+
+.quill-workspace .qw-message-list summary {
+  cursor: pointer;
+}
+
+.quill-workspace .qw-composer-wrap {
+  z-index: 1;
+  flex: 0 0 auto;
+  padding: 12px 24px max(18px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, #101010 24%);
+}
+
+.quill-workspace .qw-composer {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 13px 16px 11px;
+  border: 1px solid #303034;
+  border-radius: 18px;
+  background: #1c1c1f;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.quill-workspace .qw-composer:focus-within {
+  border-color: #5c5146;
+  box-shadow: 0 0 0 1px rgb(255 138 31 / 0.1);
+}
+
+.quill-workspace .qw-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 55px;
+  max-height: 160px;
+  padding: 2px 1px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #ececef;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.quill-workspace .qw-composer > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  padding-top: 7px;
+}
+
+.quill-workspace .qw-composer > div > span {
+  color: #77777e;
+  font-size: 11px;
+}
+
+.quill-workspace .qw-composer button[type="submit"] {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #929296;
+  color: #171719;
+  cursor: pointer;
+}
+
+.quill-workspace .qw-composer button[type="submit"]:hover:not(:disabled) {
+  background: #b0b0b4;
+}
+
+.quill-workspace .qw-composer .qw-stop-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f2f2f4;
+  color: #171719;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.quill-workspace .qw-composer .qw-stop-button:hover:not(:disabled) {
+  background: #fff;
+  color: #171719;
+}
+
+.quill-workspace .qw-composer .qw-stop-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.quill-workspace .qw-tools {
+  display: flex !important;
+  flex-direction: column;
+  width: 360px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid #252528;
+  background: #121212;
+}
+
+.quill-workspace .qw-tools > div:first-child {
+  display: flex;
+  flex: 0 0 64px;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 20px;
+  border-bottom: 1px solid #252528;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.quill-workspace .qw-tools nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+}
+
+.quill-workspace .qw-tools .qw-tool-launcher {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 34px;
+}
+
+.quill-workspace .qw-tools .qw-tool-launcher .qw-tool-item {
+  min-height: 52px;
+  padding: 8px 4px;
+  border-color: transparent;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.quill-workspace .qw-tools .qw-tool-launcher .qw-tool-item:hover {
+  border-color: transparent;
+  background: #1a1a1d;
+}
+
+.quill-workspace .qw-tools .qw-tool-launcher .qw-tool-icon {
+  margin-top: 1px;
+}
+
+.quill-workspace .qw-tools .qw-tool-launcher .qw-tool-label {
+  color: #e7e7e9;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.quill-workspace .qw-tools .qw-tool-launcher .qw-tool-description {
+  color: #96969d;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.quill-workspace .qw-tools .qw-tools-bar {
+  display: flex;
+  flex: 0 0 48px;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  border-bottom: 1px solid #252528;
+  color: #e5e5e7;
+  font-size: 13px;
+}
+
+.quill-workspace .qw-tools-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #a5a5ac;
+  font: inherit;
+  cursor: pointer;
+}
+
+.quill-workspace .qw-tools-bar button:hover {
+  background: #202023;
+  color: #f1f1f3;
+}
+
+.quill-workspace .qw-tools .qw-tools-detail {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+}
+
+.quill-workspace .qw-tool-item {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #e0e0e3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quill-workspace .qw-tool-item:hover,
+.quill-workspace .qw-tool-item[class*="bg-white/[0.08]"] {
+  border-color: #29292d;
+  background: #1b1b1e;
+}
+
+.quill-workspace .qw-tool-icon {
+  display: flex;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  color: #929299;
+}
+
+.quill-workspace .qw-tool-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.quill-workspace .qw-tool-label {
+  display: block;
+  color: #e2e2e5;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.quill-workspace .qw-tool-description {
+  display: block;
+  color: #818188;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.quill-workspace .qw-tools-detail {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.quill-workspace .qw-tools h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+@media (min-width: 1101px) and (max-width: 1500px) {
+  .quill-workspace {
+    grid-template-columns: 272px minmax(0, 1fr);
+  }
+
+  .quill-workspace .qw-content {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .quill-workspace .qw-tools {
+    width: 300px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .quill-workspace {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  .quill-workspace .qw-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .quill-workspace .qw-tools {
+    display: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .quill-workspace {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .quill-workspace .qw-main {
+    flex: 1 1 auto;
+  }
+
+  .quill-workspace .qw-sidebar {
+    display: none !important;
+  }
+
+  .quill-workspace .qw-header {
+    flex-basis: 60px;
+    height: 60px;
+    padding: 0 10px;
+  }
+
+  .quill-workspace .qw-header > div:first-child,
+  .quill-workspace .qw-header > div:last-child {
+    gap: 5px;
+  }
+
+  .quill-workspace .qw-messages {
+    padding: 18px 14px;
+  }
+
+  .quill-workspace .qw-message-list {
+    gap: 18px;
+  }
+
+  .quill-workspace .qw-composer-wrap {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
