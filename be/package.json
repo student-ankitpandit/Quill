@@ -4,9 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --watch index.ts",
+    "build": "bun build index.ts --outdir dist",
+    "start": "bun run dist/index.js",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push"
   },
   "devDependencies": {
