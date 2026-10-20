@@ -10,6 +10,7 @@ import {
   resolveInstallation,
 } from "@/lib/api";
 import { LandingPage } from "./pages/LandingPage";
+import { PolicyPage } from "./pages/PolicyPage";
 import DashboardPage from "@/pages/DashboardPage";
 import { RightSplitViewPage } from "@/pages/RightSplitView";
 import { useEffect, useState } from "react";
@@ -127,6 +128,8 @@ export function App() {
   switch (route.page) {
     case "landing":
       return <LandingPage />;
+    case "policy":
+      return <PolicyPage policy={route.policy} />;
     case "dashboard":
       if (!isLoggedIn()) {
         navigate({ page: "landing" });

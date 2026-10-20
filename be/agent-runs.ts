@@ -1,13 +1,24 @@
 import { prisma } from "./db";
-import { redactSensitiveText } from "./session";
+import { redactSensitiveText } from "./sessions";
 
-export async function startAgentRun(sessionId: string, provider: string, model: string) {
+export async function startAgentRun(
+  sessionId: string,
+  provider: string,
+  model: string,
+) {
   return prisma.agentRun.create({ data: { sessionId, provider, model } });
 }
 
 export async function completeAgentRun(
   id: string,
-  response: { id?: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null },
+  response: {
+    id?: string;
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      total_tokens?: number;
+    } | null;
+  },
 ) {
   await prisma.agentRun.update({
     where: { id },
@@ -24,7 +35,9 @@ export async function completeAgentRun(
 
 export async function failAgentRun(id: string, error: unknown) {
   const wasCancelled = error instanceof Error && error.name === "AbortError";
-  const message = redactSensitiveText(error instanceof Error ? error.message : String(error)).slice(0, 2000);
+  const message = redactSensitiveText(
+    error instanceof Error ? error.message : String(error),
+  ).slice(0, 2000);
   await prisma.agentRun.update({
     where: { id },
     data: {

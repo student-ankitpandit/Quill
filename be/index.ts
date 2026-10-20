@@ -9,8 +9,14 @@ import {
   getInstallationOctokit,
   getInstallationToken,
 } from "./lib";
-import { getSession, listSessions, saveSession, setStatus, log } from "./session";
-import type { Session } from "./session";
+import {
+  getSession,
+  listSessions,
+  saveSession,
+  setStatus,
+  log,
+} from "./sessions";
+import type { Session } from "./sessions";
 import { storage, type InstallationData } from "./storage";
 import { getRepoConfig, saveRepoConfig } from "./repo-config";
 import axios from "axios";
@@ -31,7 +37,11 @@ import { connectUpStream, ensureRelay, RELAY_PORT } from "./browser-stream";
 import { Readable } from "node:stream";
 import sessionRoutes, { prepareWorkspace } from "./routes/session";
 import { authMiddleware } from "./middlewares/authMiddleware";
-import { connectSessionSandbox, isSandboxNotFoundError, loadOwned } from "./lib";
+import {
+  connectSessionSandbox,
+  isSandboxNotFoundError,
+  loadOwned,
+} from "./lib";
 import { saveInstallation } from "./installations";
 import { appendSideChat, getSideChat } from "./side-chat";
 import { getTerminalPid, setTerminalPid } from "./terminal-sessions";
@@ -63,11 +73,17 @@ function workspacePath(input: unknown): { relative: string; absolute: string } {
   return { relative, absolute };
 }
 
-async function assertWorkspacePathInside(sandbox: Awaited<ReturnType<typeof connectSessionSandbox>>, absolute: string) {
-  const result = await sandbox.commands.run(`realpath -e -- ${quoteShell(absolute)}`, {
-    cwd: REPO_DIR,
-    timeoutMs: 10_000,
-  });
+async function assertWorkspacePathInside(
+  sandbox: Awaited<ReturnType<typeof connectSessionSandbox>>,
+  absolute: string,
+) {
+  const result = await sandbox.commands.run(
+    `realpath -e -- ${quoteShell(absolute)}`,
+    {
+      cwd: REPO_DIR,
+      timeoutMs: 10_000,
+    },
+  );
   const realPath = result.stdout.trim();
   if (realPath !== REPO_DIR && !realPath.startsWith(`${REPO_DIR}/`)) {
     throw new Error("Path resolves outside the repository workspace.");
@@ -113,7 +129,10 @@ async function resolveInstallationId(opts: {
         opts.preferredInstallationId,
       );
     } catch (error) {
-      console.warn("Could not discover an existing GitHub App installation", error);
+      console.warn(
+        "Could not discover an existing GitHub App installation",
+        error,
+      );
     }
   }
   if (instId) return instId;
@@ -136,7 +155,10 @@ async function resolveInstallationId(opts: {
       login: opts.login,
     });
   } catch (error) {
-    console.warn("Could not match a GitHub App installation to this user", error);
+    console.warn(
+      "Could not match a GitHub App installation to this user",
+      error,
+    );
   }
   if (instId) return instId;
 
@@ -315,7 +337,8 @@ app.post("/api/auth/exchange", (req, res) => {
 
 app.get("/api/app/github/install", (req, res) => {
   const installationId =
-    (typeof req.query.installation_id === "string" && req.query.installation_id) ||
+    (typeof req.query.installation_id === "string" &&
+      req.query.installation_id) ||
     "";
   const url = installationId
     ? `https://github.com/settings/installations/${encodeURIComponent(installationId)}`
@@ -328,7 +351,8 @@ app.use(authMiddleware);
 app.use("/api/app/sessions", sessionRoutes);
 
 app.get("/api/auth/profile", async (req, res) => {
-  if (!req.userId) return res.status(401).json({ error: "Missing user account" });
+  if (!req.userId)
+    return res.status(401).json({ error: "Missing user account" });
   try {
     const publicUserId = await storage.getOrCreatePublicUserId(req.userId);
     let email = req.email ?? "";
@@ -338,45 +362,61 @@ app.get("/api/auth/profile", async (req, res) => {
     email ||= stored?.email ?? "";
     name ||= stored?.name ?? "";
     login ||= stored?.login ?? "";
-    const emailLookupIsCoolingDown = stored?.emailLookupAt && Date.now() - stored.emailLookupAt < 15 * 60 * 1000;
+    const emailLookupIsCoolingDown =
+      stored?.emailLookupAt &&
+      Date.now() - stored.emailLookupAt < 15 * 60 * 1000;
     if (!email && !emailLookupIsCoolingDown) {
       try {
         const clientId = process.env.GITHUB_CLIENT_ID;
         const clientSecret = process.env.GITHUB_CLIENT_SECRET;
         if (stored?.refreshToken && clientId && clientSecret) {
-          const refreshed = await refreshGithubAccessToken(stored.refreshToken, clientId, clientSecret);
+          const refreshed = await refreshGithubAccessToken(
+            stored.refreshToken,
+            clientId,
+            clientSecret,
+          );
           // GitHub rotates OAuth refresh tokens. Persist the replacement before
           // making another API request so a failed profile lookup cannot leave
           // the old, now-invalid refresh token in storage.
-          await storage.setInstallationForUser(req.userId, stored.installation_id, {
-            githubUserId: stored.githubUserId,
-            refreshToken: refreshed.refreshToken,
-            emailLookupAt: Date.now(),
-          });
+          await storage.setInstallationForUser(
+            req.userId,
+            stored.installation_id,
+            {
+              githubUserId: stored.githubUserId,
+              refreshToken: refreshed.refreshToken,
+              emailLookupAt: Date.now(),
+            },
+          );
           const githubUser = await getGithubUser(refreshed.accessToken);
           email = githubUser.email ?? "";
           name = githubUser.name ?? name;
           login = githubUser.login ?? login;
           if (email || name || login) {
-            await storage.setInstallationForUser(req.userId, stored.installation_id, {
-              githubUserId: stored.githubUserId,
-              refreshToken: refreshed.refreshToken,
-              email: githubUser.email,
-              emailLookupAt: Date.now(),
-              name: githubUser.name ?? undefined,
-              login: githubUser.login,
-            });
+            await storage.setInstallationForUser(
+              req.userId,
+              stored.installation_id,
+              {
+                githubUserId: stored.githubUserId,
+                refreshToken: refreshed.refreshToken,
+                email: githubUser.email,
+                emailLookupAt: Date.now(),
+                name: githubUser.name ?? undefined,
+                login: githubUser.login,
+              },
+            );
           }
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.warn("Could not refresh GitHub profile email:", message);
         if (stored?.refreshToken) {
-          await storage.setInstallationForUser(req.userId, stored.installation_id, {
-            githubUserId: stored.githubUserId,
-            refreshToken: stored.refreshToken,
-            emailLookupAt: Date.now(),
-          }).catch(() => undefined);
+          await storage
+            .setInstallationForUser(req.userId, stored.installation_id, {
+              githubUserId: stored.githubUserId,
+              refreshToken: stored.refreshToken,
+              emailLookupAt: Date.now(),
+            })
+            .catch(() => undefined);
         }
       }
     }
@@ -463,7 +503,8 @@ app.get("/api/auth/installation", async (req, res) => {
 
 app.get("/api/github/repos", async (req, res) => {
   const installation_id =
-    (typeof req.query.installation_id === "string" && req.query.installation_id) ||
+    (typeof req.query.installation_id === "string" &&
+      req.query.installation_id) ||
     req.installationId;
 
   if (!installation_id) {
@@ -646,7 +687,11 @@ app.post("/api/app/sessions", async (req, res) => {
     void prepareWorkspace(session)
       .catch(async (error: any) => {
         console.error("Sandbox setup failed", error);
-        log(session, "error", `Sandbox setup failed: ${error.message}. Handing the cloned repository to the agent.`);
+        log(
+          session,
+          "error",
+          `Sandbox setup failed: ${error.message}. Handing the cloned repository to the agent.`,
+        );
         await saveSession(session);
       })
       .finally(() => {
@@ -713,9 +758,18 @@ app.get("/api/sessions/:sessionId", async (req, res) => {
         gitDiff = diffResult.stdout.slice(0, 200_000);
       } catch (error) {
         if (isSandboxNotFoundError(error)) {
-          return res.json({ ...session, messages: session.messages, logs: session.logs, gitDiff, workspaceUnavailable: true });
+          return res.json({
+            ...session,
+            messages: session.messages,
+            logs: session.logs,
+            gitDiff,
+            workspaceUnavailable: true,
+          });
         }
-        console.warn("Could not load session changes:", error instanceof Error ? error.message : String(error));
+        console.warn(
+          "Could not load session changes:",
+          error instanceof Error ? error.message : String(error),
+        );
       }
     }
 
@@ -742,14 +796,36 @@ app.get("/api/app/sessions/:sessionId/workspace/files", async (req, res) => {
       `find ${quoteShell(realPath)} -mindepth 1 -maxdepth 1 -printf '%f\\t%y\\t%s\\n'`,
       { cwd: REPO_DIR, timeoutMs: 15_000 },
     );
-    const entries = result.stdout.split(/\r?\n/).filter(Boolean).map((line) => {
-      const [name = "", kind = "f", size = "0"] = line.split("\t");
-      return { name, type: kind === "d" ? "directory" : kind === "l" ? "symlink" : "file", size: Number(size) || 0 };
-    }).sort((a, b) => Number(b.type === "directory") - Number(a.type === "directory") || a.name.localeCompare(b.name));
+    const entries = result.stdout
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map((line) => {
+        const [name = "", kind = "f", size = "0"] = line.split("\t");
+        return {
+          name,
+          type: kind === "d" ? "directory" : kind === "l" ? "symlink" : "file",
+          size: Number(size) || 0,
+        };
+      })
+      .sort(
+        (a, b) =>
+          Number(b.type === "directory") - Number(a.type === "directory") ||
+          a.name.localeCompare(b.name),
+      );
     return res.json({ path: relative, entries });
   } catch (error) {
-    if (isSandboxNotFoundError(error)) return res.status(410).json({ error: "This session workspace has expired." });
-    return res.status(400).json({ error: error instanceof Error ? error.message : "Could not list workspace files." });
+    if (isSandboxNotFoundError(error))
+      return res
+        .status(410)
+        .json({ error: "This session workspace has expired." });
+    return res
+      .status(400)
+      .json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not list workspace files.",
+      });
   }
 });
 
@@ -758,40 +834,85 @@ app.get("/api/app/sessions/:sessionId/workspace/file", async (req, res) => {
   if (!session) return;
   try {
     const { relative, absolute } = workspacePath(req.query.path);
-    if (!relative) return res.status(400).json({ error: "Choose a file to open." });
+    if (!relative)
+      return res.status(400).json({ error: "Choose a file to open." });
     const sandbox = await connectSessionSandbox(session.sandboxId);
     const realPath = await assertWorkspacePathInside(sandbox, absolute);
-    const size = await sandbox.commands.run(`wc -c < ${quoteShell(realPath)}`, { cwd: REPO_DIR, timeoutMs: 10_000 });
+    const size = await sandbox.commands.run(`wc -c < ${quoteShell(realPath)}`, {
+      cwd: REPO_DIR,
+      timeoutMs: 10_000,
+    });
     const byteLength = Number(size.stdout.trim());
-    if (!Number.isFinite(byteLength)) return res.status(400).json({ error: "Could not read file metadata." });
-    if (byteLength > 1_000_000) return res.status(413).json({ error: "Files larger than 1 MB cannot be opened in the editor." });
-    const encoded = await sandbox.commands.run(`base64 -w 0 -- ${quoteShell(realPath)}`, { cwd: REPO_DIR, timeoutMs: 10_000 });
-    const content = Buffer.from(encoded.stdout.trim(), "base64").toString("utf8");
-    if (content.includes("\u0000")) return res.status(415).json({ error: "This looks like a binary file and cannot be edited here." });
+    if (!Number.isFinite(byteLength))
+      return res.status(400).json({ error: "Could not read file metadata." });
+    if (byteLength > 1_000_000)
+      return res
+        .status(413)
+        .json({
+          error: "Files larger than 1 MB cannot be opened in the editor.",
+        });
+    const encoded = await sandbox.commands.run(
+      `base64 -w 0 -- ${quoteShell(realPath)}`,
+      { cwd: REPO_DIR, timeoutMs: 10_000 },
+    );
+    const content = Buffer.from(encoded.stdout.trim(), "base64").toString(
+      "utf8",
+    );
+    if (content.includes("\u0000"))
+      return res
+        .status(415)
+        .json({
+          error: "This looks like a binary file and cannot be edited here.",
+        });
     return res.json({ path: relative, content, byteLength });
   } catch (error) {
-    if (isSandboxNotFoundError(error)) return res.status(410).json({ error: "This session workspace has expired." });
-    return res.status(400).json({ error: error instanceof Error ? error.message : "Could not open this file." });
+    if (isSandboxNotFoundError(error))
+      return res
+        .status(410)
+        .json({ error: "This session workspace has expired." });
+    return res
+      .status(400)
+      .json({
+        error:
+          error instanceof Error ? error.message : "Could not open this file.",
+      });
   }
 });
 
 app.put("/api/app/sessions/:sessionId/workspace/file", async (req, res) => {
   const session = await loadOwned(req, res);
   if (!session) return;
-  if (typeof req.body?.content !== "string" || Buffer.byteLength(req.body.content, "utf8") > 1_000_000) {
-    return res.status(400).json({ error: "File content must be text smaller than 1 MB." });
+  if (
+    typeof req.body?.content !== "string" ||
+    Buffer.byteLength(req.body.content, "utf8") > 1_000_000
+  ) {
+    return res
+      .status(400)
+      .json({ error: "File content must be text smaller than 1 MB." });
   }
   try {
     const { relative, absolute } = workspacePath(req.body.path);
-    if (!relative) return res.status(400).json({ error: "Choose a file to save." });
+    if (!relative)
+      return res.status(400).json({ error: "Choose a file to save." });
     const sandbox = await connectSessionSandbox(session.sandboxId);
     const realPath = await assertWorkspacePathInside(sandbox, absolute);
     const base64 = Buffer.from(req.body.content, "utf8").toString("base64");
-    await sandbox.commands.run(`printf '%s' '${base64}' | base64 -d > ${quoteShell(realPath)}`, { cwd: REPO_DIR, timeoutMs: 15_000 });
+    await sandbox.commands.run(
+      `printf '%s' '${base64}' | base64 -d > ${quoteShell(realPath)}`,
+      { cwd: REPO_DIR, timeoutMs: 15_000 },
+    );
     return res.json({ path: relative, saved: true });
   } catch (error) {
-    if (isSandboxNotFoundError(error)) return res.status(410).json({ error: "This session workspace has expired." });
-    return res.status(400).json({ error: error instanceof Error ? error.message : "Could not save this file." });
+    if (isSandboxNotFoundError(error))
+      return res
+        .status(410)
+        .json({ error: "This session workspace has expired." });
+    return res
+      .status(400)
+      .json({
+        error:
+          error instanceof Error ? error.message : "Could not save this file.",
+      });
   }
 });
 
@@ -800,11 +921,22 @@ app.get("/api/app/sessions/:sessionId/changes", async (req, res) => {
   if (!session) return;
   try {
     const sandbox = await connectSessionSandbox(session.sandboxId);
-    const result = await sandbox.commands.run("git add -N . >/dev/null 2>&1; git diff HEAD --", { cwd: REPO_DIR, timeoutMs: 30_000 });
+    const result = await sandbox.commands.run(
+      "git add -N . >/dev/null 2>&1; git diff HEAD --",
+      { cwd: REPO_DIR, timeoutMs: 30_000 },
+    );
     return res.json({ diff: result.stdout.slice(0, 500_000) });
   } catch (error) {
-    if (isSandboxNotFoundError(error)) return res.status(410).json({ error: "This session workspace has expired." });
-    return res.status(502).json({ error: error instanceof Error ? error.message : "Could not load changes." });
+    if (isSandboxNotFoundError(error))
+      return res
+        .status(410)
+        .json({ error: "This session workspace has expired." });
+    return res
+      .status(502)
+      .json({
+        error:
+          error instanceof Error ? error.message : "Could not load changes.",
+      });
   }
 });
 
@@ -815,7 +947,10 @@ app.post("/api/app/sessions/:sessionId/terminal/start", async (req, res) => {
     const sandbox = await connectSessionSandbox(session.sandboxId);
     const existingPid = await getTerminalPid(session.id);
     const processes = await sandbox.commands.list();
-    if (existingPid && processes.some((process) => process.pid === existingPid)) {
+    if (
+      existingPid &&
+      processes.some((process) => process.pid === existingPid)
+    ) {
       return res.json({ pid: existingPid, cwd: REPO_DIR });
     }
     const handle = await sandbox.pty.create({
@@ -828,11 +963,24 @@ app.post("/api/app/sessions/:sessionId/terminal/start", async (req, res) => {
     });
     await handle.disconnect();
     await setTerminalPid(session.id, handle.pid);
-    await sandbox.pty.sendInput(handle.pid, new TextEncoder().encode("export PS1='quill@e2b:\\w$ '\n"));
+    await sandbox.pty.sendInput(
+      handle.pid,
+      new TextEncoder().encode("export PS1='quill@e2b:\\w$ '\n"),
+    );
     return res.json({ pid: handle.pid, cwd: REPO_DIR });
   } catch (error) {
-    if (isSandboxNotFoundError(error)) return res.status(410).json({ error: "This session workspace has expired." });
-    return res.status(502).json({ error: error instanceof Error ? error.message : "Could not start the sandbox terminal." });
+    if (isSandboxNotFoundError(error))
+      return res
+        .status(410)
+        .json({ error: "This session workspace has expired." });
+    return res
+      .status(502)
+      .json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not start the sandbox terminal.",
+      });
   }
 });
 
@@ -846,14 +994,26 @@ app.get("/api/app/sessions/:sessionId/terminal/stream", async (req, res) => {
     const processes = await sandbox.commands.list();
     if (!processes.some((process) => process.pid === pid)) {
       await setTerminalPid(session.id, undefined);
-      return res.status(410).json({ error: "The terminal process has ended. Start a new terminal." });
+      return res
+        .status(410)
+        .json({
+          error: "The terminal process has ended. Start a new terminal.",
+        });
     }
-    res.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+    res.set({
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
     res.flushHeaders();
     const handle = await sandbox.pty.connect(pid, {
       timeoutMs: 30 * 60 * 1000,
       onData: (data) => {
-        if (!res.destroyed) res.write(`event: output\ndata: ${Buffer.from(data).toString("base64")}\n\n`);
+        if (!res.destroyed)
+          res.write(
+            `event: output\ndata: ${Buffer.from(data).toString("base64")}\n\n`,
+          );
       },
     });
     const heartbeat = setInterval(() => res.write(": ping\n\n"), 25_000);
@@ -861,19 +1021,35 @@ app.get("/api/app/sessions/:sessionId/terminal/stream", async (req, res) => {
       clearInterval(heartbeat);
       void handle.disconnect();
     });
-    void handle.wait().then(() => {
-      if (!res.destroyed) res.write("event: exit\ndata: {}\n\n");
-      res.end();
-      void setTerminalPid(session.id, undefined);
-    }).catch((error) => {
-      if (!res.destroyed) {
-        res.write(`event: terminal-error\ndata: ${JSON.stringify({ error: error instanceof Error ? error.message : "Terminal disconnected." })}\n\n`);
+    void handle
+      .wait()
+      .then(() => {
+        if (!res.destroyed) res.write("event: exit\ndata: {}\n\n");
         res.end();
-      }
-    });
+        void setTerminalPid(session.id, undefined);
+      })
+      .catch((error) => {
+        if (!res.destroyed) {
+          res.write(
+            `event: terminal-error\ndata: ${JSON.stringify({ error: error instanceof Error ? error.message : "Terminal disconnected." })}\n\n`,
+          );
+          res.end();
+        }
+      });
   } catch (error) {
-    if (isSandboxNotFoundError(error)) return res.status(410).json({ error: "This session workspace has expired." });
-    if (!res.headersSent) return res.status(502).json({ error: error instanceof Error ? error.message : "Could not connect to the terminal." });
+    if (isSandboxNotFoundError(error))
+      return res
+        .status(410)
+        .json({ error: "This session workspace has expired." });
+    if (!res.headersSent)
+      return res
+        .status(502)
+        .json({
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not connect to the terminal.",
+        });
     return res.end();
   }
 });
@@ -882,16 +1058,30 @@ app.post("/api/app/sessions/:sessionId/terminal/input", async (req, res) => {
   const session = await loadOwned(req, res);
   if (!session) return;
   const data = typeof req.body?.data === "string" ? req.body.data : "";
-  if (!data || Buffer.byteLength(data, "utf8") > 8192) return res.status(400).json({ error: "Terminal input is empty or too long." });
+  if (!data || Buffer.byteLength(data, "utf8") > 8192)
+    return res
+      .status(400)
+      .json({ error: "Terminal input is empty or too long." });
   try {
     const pid = await getTerminalPid(session.id);
-    if (!pid) return res.status(409).json({ error: "Start the terminal first." });
+    if (!pid)
+      return res.status(409).json({ error: "Start the terminal first." });
     const sandbox = await connectSessionSandbox(session.sandboxId);
     await sandbox.pty.sendInput(pid, new TextEncoder().encode(data));
     return res.json({ sent: true });
   } catch (error) {
-    if (isSandboxNotFoundError(error)) return res.status(410).json({ error: "This session workspace has expired." });
-    return res.status(502).json({ error: error instanceof Error ? error.message : "Could not send terminal input." });
+    if (isSandboxNotFoundError(error))
+      return res
+        .status(410)
+        .json({ error: "This session workspace has expired." });
+    return res
+      .status(502)
+      .json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not send terminal input.",
+      });
   }
 });
 
@@ -900,7 +1090,8 @@ app.post("/api/app/sessions/:sessionId/terminal/resize", async (req, res) => {
   if (!session) return;
   try {
     const pid = await getTerminalPid(session.id);
-    if (!pid) return res.status(409).json({ error: "Start the terminal first." });
+    if (!pid)
+      return res.status(409).json({ error: "Start the terminal first." });
     const sandbox = await connectSessionSandbox(session.sandboxId);
     await sandbox.pty.resize(pid, {
       cols: Math.min(240, Math.max(40, Number(req.body?.cols) || 100)),
@@ -908,8 +1099,18 @@ app.post("/api/app/sessions/:sessionId/terminal/resize", async (req, res) => {
     });
     return res.json({ resized: true });
   } catch (error) {
-    if (isSandboxNotFoundError(error)) return res.status(410).json({ error: "This session workspace has expired." });
-    return res.status(502).json({ error: error instanceof Error ? error.message : "Could not resize the terminal." });
+    if (isSandboxNotFoundError(error))
+      return res
+        .status(410)
+        .json({ error: "This session workspace has expired." });
+    return res
+      .status(502)
+      .json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not resize the terminal.",
+      });
   }
 });
 
@@ -922,20 +1123,32 @@ app.get("/api/app/sessions/:sessionId/side-chat", async (req, res) => {
 app.post("/api/app/sessions/:sessionId/side-chat", async (req, res) => {
   const session = await loadOwned(req, res);
   if (!session) return;
-  const question = typeof req.body?.message === "string" ? req.body.message.trim() : "";
-  if (!question) return res.status(400).json({ error: "Enter a question first." });
-  if (question.length > 10_000) return res.status(400).json({ error: "Message is too long." });
+  const question =
+    typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  if (!question)
+    return res.status(400).json({ error: "Enter a question first." });
+  if (question.length > 10_000)
+    return res.status(400).json({ error: "Message is too long." });
   try {
     const now = new Date().toISOString();
-    await appendSideChat(session.id, [{ role: "user", content: question, time: now }]);
+    await appendSideChat(session.id, [
+      { role: "user", content: question, time: now },
+    ]);
     const answer = await answerSideChat(session, question);
     const messages = await appendSideChat(session.id, [
       { role: "assistant", content: answer, time: new Date().toISOString() },
     ]);
     return res.json({ messages });
   } catch (error) {
-    console.error("Side chat failed:", error instanceof Error ? error.message : String(error));
-    return res.status(502).json({ error: "Side chat could not generate a reply. Please try again." });
+    console.error(
+      "Side chat failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+    return res
+      .status(502)
+      .json({
+        error: "Side chat could not generate a reply. Please try again.",
+      });
   }
 });
 
@@ -1151,11 +1364,14 @@ app.post("/api/app/sessions/:sessionId/pull-request", async (req, res) => {
 
     const result = await publishChanges(sandbox, session, session.title || "");
     if (!result) {
-      return res.status(409).json({ error: "There are no changes to publish." });
+      return res
+        .status(409)
+        .json({ error: "There are no changes to publish." });
     }
-    if ('unchanged' in result) {
+    if ("unchanged" in result) {
       return res.status(409).json({
-        error: "The workspace has no new commits or file changes, and the GitHub branch has no commits ahead of the base branch.",
+        error:
+          "The workspace has no new commits or file changes, and the GitHub branch has no commits ahead of the base branch.",
         branch: result.branch,
         commitSha: result.commitSha,
       });
@@ -1180,7 +1396,8 @@ app.post("/api/app/sessions/:sessionId/pull-request", async (req, res) => {
   } catch (e) {
     if (isSandboxNotFoundError(e)) {
       return res.status(410).json({
-        error: "This session's workspace has expired. Its unpushed changes are no longer available; start a new session to continue.",
+        error:
+          "This session's workspace has expired. Its unpushed changes are no longer available; start a new session to continue.",
       });
     }
     console.log("Pull-request failed: ", e);
@@ -1191,86 +1408,151 @@ app.post("/api/app/sessions/:sessionId/pull-request", async (req, res) => {
 });
 
 // Merge is a separate, explicit action. Creating or updating a PR never merges it.
-app.post("/api/app/sessions/:sessionId/pull-request/merge", async (req, res) => {
-  const session = await loadOwned(req, res);
-  if (!session) return;
-  if (req.body?.userApproved !== true) {
-    return res.status(400).json({ error: "Review the pull request and explicitly confirm before merging." });
-  }
-  if (!session.prUrl || !session.branch) {
-    return res.status(409).json({ error: "This session has no pull request to merge." });
-  }
-  if (session.prMergedAt) {
-    return res.json({ merged: true, mergedAt: session.prMergedAt, mergeCommitSha: session.prMergeCommitSha, baseBranch: session.prBaseBranch ?? "main" });
-  }
-  if (session.status === "running" || publishing.has(session.id)) {
-    return res.status(409).json({ error: "Wait for the agent to finish before merging this pull request." });
-  }
-
-  let pullNumber: number;
-  try {
-    const prUrl = new URL(session.prUrl);
-    const [owner, repo, resource, number] = prUrl.pathname.split("/").filter(Boolean);
-    if (
-      prUrl.hostname !== "github.com" ||
-      owner !== session.repoFullName.split("/")[0] ||
-      repo !== session.repoFullName.split("/")[1] ||
-      resource !== "pull" ||
-      !number ||
-      !/^\d+$/.test(number)
-    ) {
-      return res.status(400).json({ error: "The saved pull request URL does not match this repository." });
+app.post(
+  "/api/app/sessions/:sessionId/pull-request/merge",
+  async (req, res) => {
+    const session = await loadOwned(req, res);
+    if (!session) return;
+    if (req.body?.userApproved !== true) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Review the pull request and explicitly confirm before merging.",
+        });
     }
-    pullNumber = Number(number);
-  } catch {
-    return res.status(400).json({ error: "The saved pull request URL is invalid." });
-  }
+    if (!session.prUrl || !session.branch) {
+      return res
+        .status(409)
+        .json({ error: "This session has no pull request to merge." });
+    }
+    if (session.prMergedAt) {
+      return res.json({
+        merged: true,
+        mergedAt: session.prMergedAt,
+        mergeCommitSha: session.prMergeCommitSha,
+        baseBranch: session.prBaseBranch ?? "main",
+      });
+    }
+    if (session.status === "running" || publishing.has(session.id)) {
+      return res
+        .status(409)
+        .json({
+          error:
+            "Wait for the agent to finish before merging this pull request.",
+        });
+    }
 
-  publishing.add(session.id);
-  try {
-    const [owner, repo] = session.repoFullName.split("/");
-    if (!owner || !repo) return res.status(400).json({ error: "Invalid repository name." });
-    const octokit = await getInstallationOctokit(session.installationId);
-    const { data: repoInfo } = await octokit.rest.repos.get({ owner, repo });
-    const { data: pullRequest } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+    let pullNumber: number;
+    try {
+      const prUrl = new URL(session.prUrl);
+      const [owner, repo, resource, number] = prUrl.pathname
+        .split("/")
+        .filter(Boolean);
+      if (
+        prUrl.hostname !== "github.com" ||
+        owner !== session.repoFullName.split("/")[0] ||
+        repo !== session.repoFullName.split("/")[1] ||
+        resource !== "pull" ||
+        !number ||
+        !/^\d+$/.test(number)
+      ) {
+        return res
+          .status(400)
+          .json({
+            error: "The saved pull request URL does not match this repository.",
+          });
+      }
+      pullNumber = Number(number);
+    } catch {
+      return res
+        .status(400)
+        .json({ error: "The saved pull request URL is invalid." });
+    }
 
-    if (pullRequest.merged_at) {
-      session.prMergedAt = pullRequest.merged_at;
-      session.prMergeCommitSha = pullRequest.merge_commit_sha ?? undefined;
+    publishing.add(session.id);
+    try {
+      const [owner, repo] = session.repoFullName.split("/");
+      if (!owner || !repo)
+        return res.status(400).json({ error: "Invalid repository name." });
+      const octokit = await getInstallationOctokit(session.installationId);
+      const { data: repoInfo } = await octokit.rest.repos.get({ owner, repo });
+      const { data: pullRequest } = await octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: pullNumber,
+      });
+
+      if (pullRequest.merged_at) {
+        session.prMergedAt = pullRequest.merged_at;
+        session.prMergeCommitSha = pullRequest.merge_commit_sha ?? undefined;
+        session.prBaseBranch = pullRequest.base.ref;
+        await saveSession(session);
+        return res.json({
+          merged: true,
+          mergedAt: session.prMergedAt,
+          mergeCommitSha: session.prMergeCommitSha,
+          baseBranch: session.prBaseBranch,
+        });
+      }
+      if (pullRequest.state !== "open") {
+        return res
+          .status(409)
+          .json({ error: "This pull request is closed and cannot be merged." });
+      }
+      if (
+        pullRequest.head.ref !== session.branch ||
+        pullRequest.base.ref !== repoInfo.default_branch
+      ) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "The pull request branch or target changed. Review it on GitHub before merging.",
+          });
+      }
+      if (pullRequest.mergeable === false) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "This pull request has merge conflicts. Resolve them on GitHub and review again.",
+          });
+      }
+
+      const { data: merge } = await octokit.rest.pulls.merge({
+        owner,
+        repo,
+        pull_number: pullNumber,
+        sha: pullRequest.head.sha,
+        merge_method: "merge",
+      });
+      session.prMergedAt = new Date().toISOString();
+      session.prMergeCommitSha = merge.sha;
       session.prBaseBranch = pullRequest.base.ref;
+      log(
+        session,
+        "info",
+        `Pull request #${pullNumber} merged into ${pullRequest.base.ref} as ${merge.sha}`,
+      );
       await saveSession(session);
-      return res.json({ merged: true, mergedAt: session.prMergedAt, mergeCommitSha: session.prMergeCommitSha, baseBranch: session.prBaseBranch });
+      return res.json({
+        merged: true,
+        mergedAt: session.prMergedAt,
+        mergeCommitSha: merge.sha,
+        baseBranch: session.prBaseBranch,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "GitHub could not merge this pull request.";
+      return res.status(502).json({ error: `Merge failed: ${message}` });
+    } finally {
+      publishing.delete(session.id);
     }
-    if (pullRequest.state !== "open") {
-      return res.status(409).json({ error: "This pull request is closed and cannot be merged." });
-    }
-    if (pullRequest.head.ref !== session.branch || pullRequest.base.ref !== repoInfo.default_branch) {
-      return res.status(409).json({ error: "The pull request branch or target changed. Review it on GitHub before merging." });
-    }
-    if (pullRequest.mergeable === false) {
-      return res.status(409).json({ error: "This pull request has merge conflicts. Resolve them on GitHub and review again." });
-    }
-
-    const { data: merge } = await octokit.rest.pulls.merge({
-      owner,
-      repo,
-      pull_number: pullNumber,
-      sha: pullRequest.head.sha,
-      merge_method: "merge",
-    });
-    session.prMergedAt = new Date().toISOString();
-    session.prMergeCommitSha = merge.sha;
-    session.prBaseBranch = pullRequest.base.ref;
-    log(session, "info", `Pull request #${pullNumber} merged into ${pullRequest.base.ref} as ${merge.sha}`);
-    await saveSession(session);
-    return res.json({ merged: true, mergedAt: session.prMergedAt, mergeCommitSha: merge.sha, baseBranch: session.prBaseBranch });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "GitHub could not merge this pull request.";
-    return res.status(502).json({ error: `Merge failed: ${message}` });
-  } finally {
-    publishing.delete(session.id);
-  }
-});
+  },
+);
 
 app.post("/api/app/sessions/:sessionId/deploy", async (req, res) => {
   const session = await loadOwned(req, res);
@@ -1339,7 +1621,8 @@ app.post("/api/app/sessions/:sessionId/deploy", async (req, res) => {
   } catch (err: any) {
     if (isSandboxNotFoundError(err)) {
       return res.status(410).json({
-        error: "This session's workspace has expired. Start a new session to deploy the repository.",
+        error:
+          "This session's workspace has expired. Start a new session to deploy the repository.",
       });
     }
     console.error("Deploy failed", err);

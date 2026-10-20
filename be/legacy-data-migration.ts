@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { prisma } from "./db";
 import { storage, type InstallationData } from "./storage";
-import { saveSession, type Session } from "./session";
+import { saveSession, type Session } from "./sessions";
 import { saveRepoConfig, type RepoConfig } from "./repo-config";
 import type { SideChatMessage } from "./side-chat";
 
@@ -19,12 +19,26 @@ async function readLegacyJson<T>(filename: string, fallback: T): Promise<T> {
 }
 
 export async function migrateLegacyJsonData(): Promise<void> {
-  if (await prisma.backendMigration.findUnique({ where: { id: MIGRATION_ID } })) return;
+  if (await prisma.backendMigration.findUnique({ where: { id: MIGRATION_ID } }))
+    return;
 
-  const [publicIds, installations, events, configs, legacySessions, sideChats, terminals] = await Promise.all([
+  const [
+    publicIds,
+    installations,
+    events,
+    configs,
+    legacySessions,
+    sideChats,
+    terminals,
+  ] = await Promise.all([
     readLegacyJson<Record<string, string>>("profile-ids.json", {}),
     readLegacyJson<InstallationData[]>("installations.json", []),
-    readLegacyJson<Record<string, { setupAction?: string; installedAt?: string; updatedAt?: string }>>("installation-events.json", {}),
+    readLegacyJson<
+      Record<
+        string,
+        { setupAction?: string; installedAt?: string; updatedAt?: string }
+      >
+    >("installation-events.json", {}),
     readLegacyJson<Record<string, RepoConfig>>("repo-configs.json", {}),
     readLegacyJson<Record<string, Partial<Session>>>("sessions.json", {}),
     readLegacyJson<Record<string, SideChatMessage[]>>("side-chats.json", {}),
@@ -35,24 +49,37 @@ export async function migrateLegacyJsonData(): Promise<void> {
     await storage.setPublicUserId(userId, publicId);
   }
   for (const installation of installations) {
-    if (installation.userId && installation.installation_id) await storage.upsert(installation);
+    if (installation.userId && installation.installation_id)
+      await storage.upsert(installation);
   }
   for (const [installationId, event] of Object.entries(events)) {
-    const installedAt = event.installedAt ? new Date(event.installedAt) : new Date();
+    const installedAt = event.installedAt
+      ? new Date(event.installedAt)
+      : new Date();
     const updatedAt = event.updatedAt ? new Date(event.updatedAt) : installedAt;
     await prisma.gitHubInstallationEvent.upsert({
       where: { installationId },
-      create: { installationId, setupAction: event.setupAction, installedAt, updatedAt },
+      create: {
+        installationId,
+        setupAction: event.setupAction,
+        installedAt,
+        updatedAt,
+      },
       update: { setupAction: event.setupAction, installedAt, updatedAt },
     });
   }
   for (const [key, config] of Object.entries(configs)) {
     const separator = key.indexOf(":");
     if (separator < 1) continue;
-    await saveRepoConfig(key.slice(0, separator), key.slice(separator + 1), config);
+    await saveRepoConfig(
+      key.slice(0, separator),
+      key.slice(separator + 1),
+      config,
+    );
   }
   for (const [id, partial] of Object.entries(legacySessions)) {
-    if (!partial.installationId || !partial.sandboxId || !partial.repoFullName) continue;
+    if (!partial.installationId || !partial.sandboxId || !partial.repoFullName)
+      continue;
     const session = {
       ...partial,
       id: partial.id || id,
@@ -64,7 +91,13 @@ export async function migrateLegacyJsonData(): Promise<void> {
     await saveSession(session);
   }
   for (const [sessionId, messages] of Object.entries(sideChats)) {
-    if (!await prisma.session.findUnique({ where: { id: sessionId }, select: { id: true } })) continue;
+    if (
+      !(await prisma.session.findUnique({
+        where: { id: sessionId },
+        select: { id: true },
+      }))
+    )
+      continue;
     for (const [sequence, message] of messages.entries()) {
       await prisma.sideChatMessage.upsert({
         where: { sessionId_sequence: { sessionId, sequence } },
@@ -84,7 +117,13 @@ export async function migrateLegacyJsonData(): Promise<void> {
     }
   }
   for (const [sessionId, pid] of Object.entries(terminals)) {
-    if (!await prisma.session.findUnique({ where: { id: sessionId }, select: { id: true } })) continue;
+    if (
+      !(await prisma.session.findUnique({
+        where: { id: sessionId },
+        select: { id: true },
+      }))
+    )
+      continue;
     await prisma.terminalSession.upsert({
       where: { sessionId },
       create: { sessionId, pid },

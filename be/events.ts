@@ -1,23 +1,27 @@
 import { EventEmitter } from "node:events";
-import type { LogEntry, Session } from "./session";
+import type { LogEntry, Session } from "./sessions";
 
 export type SessionEvent =
-    | { type: "log"; id: number; data: LogEntry }
-    | { type: "message"; id?: undefined; data: { role: "user" | "assistant"; content: string } }
-    | {
-        type: "status";
-        id?: undefined;
-        data: { status: Session["status"]; prUrl?: string; branch?: string };
-    };  
+  | { type: "log"; id: number; data: LogEntry }
+  | {
+      type: "message";
+      id?: undefined;
+      data: { role: "user" | "assistant"; content: string };
+    }
+  | {
+      type: "status";
+      id?: undefined;
+      data: { status: Session["status"]; prUrl?: string; branch?: string };
+    };
 
 const emitter = new EventEmitter();
 emitter.setMaxListeners(0); // many browser tabs can listen to one session
 
 export function publish(sessionId: string, event: SessionEvent) {
-    emitter.emit(sessionId, event);
+  emitter.emit(sessionId, event);
 }
 
 export function subscribe(sessionId: string, fn: (e: SessionEvent) => void) {
-    emitter.on(sessionId, fn);
-    return () => emitter.off(sessionId, fn); // call this to unsubscribe
+  emitter.on(sessionId, fn);
+  return () => emitter.off(sessionId, fn); // call this to unsubscribe
 }

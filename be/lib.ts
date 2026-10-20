@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import { Octokit } from "octokit";
 import type { Request, Response } from "express";
 import { Sandbox } from "e2b";
-import { getSession } from "./session";
-import type { Session } from "./session";
+import { getSession } from "./sessions";
+import type { Session } from "./sessions";
 
 type GithubTokenResponse = {
   access_token?: string;
@@ -119,24 +119,26 @@ export const getGithubUser = async (
 
   let email = response.data.email ?? null;
   try {
-    const emails = await axios.get<Array<{ email: string; primary: boolean; verified: boolean }>>(
-      "https://api.github.com/user/emails",
-      {
-        timeout: 15_000,
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${accessToken}`,
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
+    const emails = await axios.get<
+      Array<{ email: string; primary: boolean; verified: boolean }>
+    >("https://api.github.com/user/emails", {
+      timeout: 15_000,
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${accessToken}`,
+        "X-GitHub-Api-Version": "2022-11-28",
       },
-    );
-    email = emails.data.find((item) => item.primary && item.verified)?.email
-      ?? emails.data.find((item) => item.verified)?.email
-      ?? email;
+    });
+    email =
+      emails.data.find((item) => item.primary && item.verified)?.email ??
+      emails.data.find((item) => item.verified)?.email ??
+      email;
   } catch (error) {
     // Email lookup is optional (and requires the user:email OAuth scope). Avoid
     // logging the Axios error object because it includes request/config details.
-    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    const status = axios.isAxiosError(error)
+      ? error.response?.status
+      : undefined;
     console.warn(
       status
         ? `Could not read the authenticated GitHub user's email (HTTP ${status}); using the public profile email when available.`
@@ -203,17 +205,16 @@ async function listAppInstallations(): Promise<AppInstallation[]> {
   const results: AppInstallation[] = [];
 
   for (let page = 1; page <= 10; page++) {
-    const response = await axios.get<AppInstallation[] | { installations?: AppInstallation[] }>(
-      "https://api.github.com/app/installations",
-      {
-        headers: {
-          Authorization: `Bearer ${appJWT}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-        params: { per_page: 100, page },
+    const response = await axios.get<
+      AppInstallation[] | { installations?: AppInstallation[] }
+    >("https://api.github.com/app/installations", {
+      headers: {
+        Authorization: `Bearer ${appJWT}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
       },
-    );
+      params: { per_page: 100, page },
+    });
 
     const batch = Array.isArray(response.data)
       ? response.data
@@ -301,7 +302,9 @@ export async function loadOwned(
   req: Request,
   res: Response,
 ): Promise<Session | null> {
-  const sessionId = (req.params.id ?? req.params.sessionId) as string | undefined;
+  const sessionId = (req.params.id ?? req.params.sessionId) as
+    | string
+    | undefined;
   const session = sessionId ? await getSession(sessionId) : null;
   if (!session || session.installationId !== req.installationId) {
     res.sendStatus(404);
@@ -334,11 +337,15 @@ export async function waitForPort(
 export function isSandboxNotFoundError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const candidate = error as { name?: string; message?: string };
-  return candidate.name === "SandboxNotFoundError" ||
-    /(?:paused )?sandbox .* not found/i.test(candidate.message ?? "");
+  return (
+    candidate.name === "SandboxNotFoundError" ||
+    /(?:paused )?sandbox .* not found/i.test(candidate.message ?? "")
+  );
 }
 
-export async function connectSessionSandbox(sandboxId: string): Promise<Sandbox> {
+export async function connectSessionSandbox(
+  sandboxId: string,
+): Promise<Sandbox> {
   const sandbox = await Sandbox.connect(sandboxId);
   // Reset the idle timer on activity. New sandboxes are configured to pause,
   // rather than be destroyed, when this timeout elapses.

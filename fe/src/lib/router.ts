@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 
 type Route =
   | { page: "landing" }
+  | { page: "policy"; policy: "refund-policy" | "return-policy" | "privacy-policy" | "terms" }
   | { page: "dashboard" }
   | { page: "settings" }
   | { page: "session"; sessionId: string }
@@ -42,6 +43,10 @@ export function parseHash(): Route {
   if (hash.startsWith("/session/")) {
     const sessionId = hash.replace("/session/", "");
     if (sessionId) return { page: "session", sessionId };
+  }
+  const policyPath = path.match(/^\/(refund-policy|return-policy|privacy-policy|terms)$/);
+  if (policyPath) {
+    return { page: "policy", policy: policyPath[1] as Extract<Route, { page: "policy" }>["policy"] };
   }
   const sessionPath = path.match(/^\/dashboard\/sessions\/([^/]+)$/);
   if (sessionPath) {
@@ -104,6 +109,10 @@ export function navigate(route: Route) {
   switch (route.page) {
     case "landing":
       window.history.pushState(null, "", "/");
+      syncRoute();
+      break;
+    case "policy":
+      window.history.pushState(null, "", `/${route.policy}`);
       syncRoute();
       break;
     case "dashboard":
