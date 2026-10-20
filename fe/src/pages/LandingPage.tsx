@@ -2,6 +2,7 @@ import { ArrowDown, ArrowRight, ArrowUpRight, Check, Code2, Feather, GitBranch, 
 import { navigate } from "@/lib/router";
 import { getLoginUrl, isLoggedIn } from "@/lib/api";
 import "./LandingPage.css";
+import "./PricingPage.css";
 
 export function LandingPage() {
   const enterQuill = () => {
@@ -16,7 +17,7 @@ export function LandingPage() {
       <nav className="home-nav">
         <a className="home-brand" href="/" aria-label="Quill home"><span className="home-brand-mark"><Feather size={19} strokeWidth={2.2} /></span><span>Quill<span className="brand-period">.</span></span></a>
         <div className="home-nav-links"><a href="#workflow">How it works</a><a href="#features">Features</a><a href="#faq">FAQ</a></div>
-        <div className="home-nav-actions"><button className="home-signin" onClick={enterQuill}>{isLoggedIn() ? "Open dashboard" : "Sign in"}</button><button className="home-nav-cta" onClick={enterQuill}>Get started <ArrowUpRight size={15} /></button></div>
+        <div className="home-nav-actions"><a className="home-signin" href="#pricing">Pricing</a><button className="home-signin" onClick={enterQuill}>{isLoggedIn() ? "Open dashboard" : "Sign in"}</button><button className="home-nav-cta" onClick={enterQuill}>Get started <ArrowUpRight size={15} /></button></div>
       </nav>
 
       <section className="home-hero">
@@ -58,6 +59,37 @@ export function LandingPage() {
       </div></section>
 
       <section className="home-features" id="features"><div className="features-heading"><span className="section-kicker">Made for your flow</span><h2>A capable agent.<br /><span>A workspace you can trust.</span></h2><p>From first question to final review, your work stays visible and in your hands.</p></div><div className="feature-grid"><article><div className="feature-icon"><Code2 size={18} /></div><h3>Grounded in your repository</h3><p>Quill works with the files and project context you selected, so answers and edits relate to your actual code.</p></article><article><div className="feature-icon"><Terminal size={18} /></div><h3>A sandbox for every task</h3><p>Build and run the project in an isolated environment with a terminal and app preview alongside the conversation.</p></article><article><div className="feature-icon"><GitBranch size={18} /></div><h3>Review before it ships</h3><p>Follow the work, inspect the diff, ask for changes, and decide when it’s ready to become a pull request.</p></article></div></section>
+
+      <section className="pricing-content" id="pricing">
+        <div className="pricing-heading">
+          <span className="section-kicker"><Sparkles size={13} /> Simple plans, more room to build</span>
+          <h2>Choose your pace.<br /><span>Keep your work moving.</span></h2>
+          <p>Pick the plan that fits how you work with Quill. Pricing is being finalized, and subscriptions are not available yet.</p>
+          <div className="pricing-coming-pill"><span /> Plans and billing are coming soon</div>
+        </div>
+        <div className="pricing-cards">
+          <article className="pricing-card">
+            <div className="pricing-plan-name">Basic</div>
+            <p className="pricing-plan-description">For everyday repository questions and focused coding tasks.</p>
+            <div className="pricing-price"><span className="pricing-currency">$</span>9<span className="pricing-period">/ month</span></div>
+            <div className="pricing-price-note">Planned price · final details coming soon</div>
+            <div className="pricing-divider" />
+            <ul><li><Check size={15} />Standard usage limits</li><li><Check size={15} />Core coding models</li><li><Check size={15} />Repository questions and code changes</li><li><Check size={15} />Reviewable workspace changes</li></ul>
+            <button type="button" className="pricing-button" disabled>Coming soon <ArrowRight size={15} /></button>
+          </article>
+          <article className="pricing-card pricing-card-featured">
+            <div className="pricing-popular">MORE CAPACITY</div>
+            <div className="pricing-plan-name">Pro</div>
+            <p className="pricing-plan-description">For heavier use, bigger projects, and more demanding work.</p>
+            <div className="pricing-price"><span className="pricing-currency">$</span>19<span className="pricing-period">/ month</span></div>
+            <div className="pricing-price-note">Planned price · final details coming soon</div>
+            <div className="pricing-divider" />
+            <ul><li><Check size={15} />Higher usage limits</li><li><Check size={15} />Access to more capable models</li><li><Check size={15} />Everything in Basic</li><li><Check size={15} />More room for complex coding tasks</li></ul>
+            <button type="button" className="pricing-button pricing-button-featured" disabled>Coming soon <ArrowRight size={15} /></button>
+          </article>
+        </div>
+        <p className="pricing-footnote">The prices and plan details shown are planned offerings. We’ll share final limits and model availability before subscriptions launch.</p>
+      </section>
 
       <section className="home-faq" id="faq"><div className="faq-intro"><span className="section-kicker">A few useful details</span><h2>Good to know.</h2><p>Quill is designed to make repository work feel straightforward and transparent.</p></div><div className="faq-list">
         <details><summary>Can I ask Quill a question without asking it to change code?<span>+</span></summary><p>Yes. Ask about the repository or how something works. Quill can respond directly, then you can choose whether to ask it to make a change.</p></details>

@@ -9,6 +9,8 @@ import {
   isSandboxNotFoundError,
 } from './lib';
 import { publish } from './events';
+import { completeAgentRun, failAgentRun, startAgentRun } from './agent-runs';
+import { prisma } from './db';
 
 let _openai: OpenAI | null = null;
 function getOpenAI() {
@@ -28,18 +30,27 @@ export function stopAgent(sessionId: string) {
   stopRequests.add(sessionId);
   activeAgentControllers.get(sessionId)?.abort(new DOMException('Stopped by user', 'AbortError'));
 }
-const queuedMessages = new Map<string, string[]>();
+const queuedMessageIds = new Map<string, string[]>();
 
-export function queueAgentMessage(sessionId: string, message: string) {
-  const queued = queuedMessages.get(sessionId) ?? [];
-  queued.push(message);
-  queuedMessages.set(sessionId, queued);
+export async function queueAgentMessage(sessionId: string, message: string) {
+  const queued = await prisma.queuedAgentMessage.create({ data: { sessionId, content: message } });
+  const ids = queuedMessageIds.get(sessionId) ?? [];
+  ids.push(queued.id);
+  queuedMessageIds.set(sessionId, ids);
 }
 
-function takeQueuedMessages(sessionId: string): string[] {
-  const queued = queuedMessages.get(sessionId) ?? [];
-  queuedMessages.delete(sessionId);
-  return queued;
+async function takeQueuedMessages(sessionId: string, includePending = false) {
+  const ids = queuedMessageIds.get(sessionId) ?? [];
+  queuedMessageIds.delete(sessionId);
+  if (!ids.length && !includePending) return [];
+  return prisma.queuedAgentMessage.findMany({
+    where: {
+      sessionId,
+      consumedAt: null,
+      ...(ids.length && !includePending ? { id: { in: ids } } : {}),
+    },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+  });
 }
 
 const SYSTEM_PROMPT =
@@ -67,17 +78,25 @@ export async function answerSideChat(session: Session, question: string): Promis
     )
     .slice(-16)
     .map((message) => ({ role: message.role as 'user' | 'assistant', content: message.content as string }));
-  const response = await getOpenAI().chat.completions.create({
-    model: MODEL,
-    messages: [
-      {
-        role: 'system',
-        content: `You are Quill's side chat for repository ${session.repoFullName}. Answer the user's follow-up using the conversation context below. This is a separate discussion: do not run tools, modify the repository, change the main conversation, or claim work was performed. If the context does not contain enough information, say so plainly.`,
-      },
-      ...context,
-      { role: 'user', content: question },
-    ],
-  });
+  const run = await startAgentRun(session.id, 'openai', MODEL);
+  let response: OpenAI.Chat.Completions.ChatCompletion;
+  try {
+    response = await getOpenAI().chat.completions.create({
+      model: MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: `You are Quill's side chat for repository ${session.repoFullName}. Answer the user's follow-up using the conversation context below. This is a separate discussion: do not run tools, modify the repository, change the main conversation, or claim work was performed. If the context does not contain enough information, say so plainly.`,
+        },
+        ...context,
+        { role: 'user', content: question },
+      ],
+    });
+    await completeAgentRun(run.id, response);
+  } catch (error) {
+    await failAgentRun(run.id, error);
+    throw error;
+  }
   return response.choices[0]?.message.content?.trim() || 'I could not generate a reply. Please try again.';
 }
 
@@ -341,12 +360,12 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
     let finalTurnIsInformational = false;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
-      const queuedAtStart = takeQueuedMessages(session.id);
+      const queuedAtStart = await takeQueuedMessages(session.id, i === 0);
       if (queuedAtStart.length) {
         session.messages.push(
-          ...queuedAtStart.map((content) => ({ role: 'user' as const, content })),
+          ...queuedAtStart.map((queued) => ({ role: 'user' as const, content: queued.content })),
         );
-        await saveSession(session);
+        await saveSession(session, queuedAtStart.map((queued) => queued.id));
       }
 
       if (signal.aborted || stopRequests.delete(session.id)) {
@@ -364,19 +383,27 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
         : '';
       finalTurnIsInformational = isInformationalQuestion(userText);
 
-      const response = await getOpenAI().chat.completions.create({
-        model: MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: `${SYSTEM_PROMPT}\nRepository: ${session.repoFullName}.`,
-          },
-          ...session.messages,
-        ],
-        ...(finalTurnIsInformational
-          ? {}
-          : { tools, tool_choice: 'auto' as const, parallel_tool_calls: false }),
-      }, { signal });
+      const agentRun = await startAgentRun(session.id, 'openai', MODEL);
+      let response: OpenAI.Chat.ChatCompletion;
+      try {
+        response = await getOpenAI().chat.completions.create({
+          model: MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `${SYSTEM_PROMPT}\nRepository: ${session.repoFullName}.`,
+            },
+            ...session.messages,
+          ],
+          ...(finalTurnIsInformational
+            ? {}
+            : { tools, tool_choice: 'auto' as const, parallel_tool_calls: false }),
+        }, { signal });
+        await completeAgentRun(agentRun.id, response);
+      } catch (error) {
+        await failAgentRun(agentRun.id, error);
+        throw error;
+      }
       if (signal.aborted) throw signal.reason;
 
       const firstChoice = response.choices[0];
@@ -394,12 +421,12 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
 
       const toolCall = choice.tool_calls?.[0];
       if (!toolCall || toolCall.type !== 'function') {
-        const queuedAfterResponse = takeQueuedMessages(session.id);
+        const queuedAfterResponse = await takeQueuedMessages(session.id);
         if (queuedAfterResponse.length) {
           session.messages.push(
-            ...queuedAfterResponse.map((content) => ({ role: 'user' as const, content })),
+            ...queuedAfterResponse.map((queued) => ({ role: 'user' as const, content: queued.content })),
           );
-          await saveSession(session);
+          await saveSession(session, queuedAfterResponse.map((queued) => queued.id));
           continue;
         }
         // no tool call means the agent considers itself done
@@ -452,13 +479,13 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
 
     if (!finished) log(session, 'info', `Reached the ${MAX_ITERATIONS}-iteration limit`);
 
-    const queuedBeforePublish = takeQueuedMessages(session.id);
+    const queuedBeforePublish = await takeQueuedMessages(session.id);
     if (queuedBeforePublish.length) {
       session.messages.push(
-        ...queuedBeforePublish.map((content) => ({ role: 'user' as const, content })),
+        ...queuedBeforePublish.map((queued) => ({ role: 'user' as const, content: queued.content })),
       );
-      await saveSession(session);
-      return runAgent(session);
+      await saveSession(session, queuedBeforePublish.map((queued) => queued.id));
+      return runAgent(session, signal);
     }
 
     if (!finalTurnIsInformational) {
@@ -484,7 +511,7 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
           data: { role: 'assistant', content: confirmation },
         });
         await saveSession(session);
-      } else if (published) {
+      } else if (published && !('unchanged' in published)) {
         const confirmation = `Verified on GitHub: commit ${published.commitSha.slice(0, 7)} was pushed to branch ${published.branch}.${published.prUrl ? ` Pull request: ${published.prUrl}. Please review the changes and checks; Quill will merge it only after you explicitly confirm.` : ''}${published.prError ? ` The commit is available, but Quill could not open a pull request: ${published.prError}` : ''}`;
         session.messages.push({ role: 'assistant', content: confirmation });
         publish(session.id, {
@@ -494,13 +521,13 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
         await saveSession(session);
       }
     }
-    const queuedAfterPublish = takeQueuedMessages(session.id);
+    const queuedAfterPublish = await takeQueuedMessages(session.id);
     if (queuedAfterPublish.length) {
       session.messages.push(
-        ...queuedAfterPublish.map((content) => ({ role: 'user' as const, content })),
+        ...queuedAfterPublish.map((queued) => ({ role: 'user' as const, content: queued.content })),
       );
-      await saveSession(session);
-      return runAgent(session);
+      await saveSession(session, queuedAfterPublish.map((queued) => queued.id));
+      return runAgent(session, signal);
     }
     setStatus(session, 'done');
     await saveSession(session);
@@ -549,6 +576,7 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
   } finally {
     if (controller && activeAgentControllers.get(session.id) === controller) {
       activeAgentControllers.delete(session.id);
+      queuedMessageIds.delete(session.id);
       stopRequests.delete(session.id);
     }
   }

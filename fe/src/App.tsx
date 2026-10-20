@@ -11,7 +11,7 @@ import {
 } from "@/lib/api";
 import { LandingPage } from "./pages/LandingPage";
 import DashboardPage from "@/pages/DashboardPage";
-import { DevinSessionPage } from "@/pages/SessionDesignPage";
+import { RightSplitViewPage } from "@/pages/RightSplitView";
 import { useEffect, useState } from "react";
 
 function AuthCallback({ code }: { code: string }) {
@@ -144,7 +144,7 @@ export function App() {
         navigate({ page: "landing" });
         return null;
       }
-      return <DevinSessionPage sessionId={route.sessionId} />;
+      return <RightSplitViewPage sessionId={route.sessionId} />;
     case "auth-callback":
       return <AuthCallback code={route.code} />;
     case "installation-callback":

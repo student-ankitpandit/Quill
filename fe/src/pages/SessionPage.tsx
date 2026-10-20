@@ -1,1 +1,1 @@
-export { DevinSessionPage as SessionPage } from "./SessionDesignPage";
+export { RightSplitViewPage as RightSplitViewSessionPage } from "./RightSplitView";

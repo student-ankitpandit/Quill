@@ -1,6 +1,6 @@
-import { DevinSessionPage } from "./SessionDesignPage";
+import { RightSplitViewPage } from "./RightSplitView";
 
 // Keep older dashboard imports on the same chat-enabled session screen.
 export default function SessionViewPage({ id }: { id: string }) {
-  return <DevinSessionPage sessionId={id} />;
+  return <RightSplitViewPage sessionId={id} />;
 }

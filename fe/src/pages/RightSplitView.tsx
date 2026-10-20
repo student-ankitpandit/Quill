@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import "./DevinSessionPage.css";
+import "./RightSplitView.css";
 import { AppSidebar } from "@/components/AppSidebar";
 import {
   Activity,
@@ -74,7 +74,7 @@ function appendIfNew(messages: Array<{ role: "user" | "assistant"; content: stri
   return [...messages, message];
 }
 
-export function DevinSessionPage({ sessionId }: { sessionId: string }) {
+export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
   const [session, setSession] = useState<Session | null>(null);
   const [recentSessions, setRecentSessions] = useState<Session[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -570,3 +570,5 @@ export function DevinSessionPage({ sessionId }: { sessionId: string }) {
     </div>
   );
 }
+
+export { RightSplitViewPage as RightSideSplitViewPage }

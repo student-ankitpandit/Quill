@@ -1,0 +1,258 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SessionStatus {
+  READY
+  RUNNING
+  WAITING_FOR_INPUT
+  DONE
+  ERROR
+  STOPPED
+}
+
+enum SessionLogType {
+  INFO
+  TOOL_CALL
+  TOOL_RESULT
+  ERROR
+}
+
+enum SideChatRole {
+  USER
+  ASSISTANT
+}
+
+model User {
+  id           String   @id
+  publicId     String   @unique
+  githubUserId String   @unique
+  login        String?
+  name         String?
+  email        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  installations GitHubInstallation[]
+  subscriptions Subscription[]
+}
+
+model GitHubInstallation {
+  installationId String    @id
+  userId         String
+  refreshToken   String?   @db.Text
+  emailLookupAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  uninstalledAt  DateTime?
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions    Session[]
+  repoConfigs RepositoryConfig[]
+
+  @@index([userId, updatedAt])
+}
+
+model GitHubInstallationEvent {
+  installationId String   @id
+  setupAction    String?
+  installedAt    DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model RepositoryConfig {
+  id             String   @id @default(cuid())
+  installationId String
+  repoFullName   String
+  installCommand String?  @db.Text
+  buildCommand   String?  @db.Text
+  testCommand    String?  @db.Text
+  runCommand     String?  @db.Text
+  port           Int?
+  hasUI          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  installation GitHubInstallation @relation(fields: [installationId], references: [installationId], onDelete: Cascade)
+
+  @@unique([installationId, repoFullName])
+  @@index([repoFullName])
+}
+
+model Session {
+  id                String        @id
+  installationId    String
+  repoFullName      String
+  sandboxId         String        @unique
+  task              String        @db.Text
+  title             String
+  issueNumber       Int?
+  status            SessionStatus @default(READY)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  pendingToolCallId String?
+  branch            String?
+  prUrl             String?
+  prBaseBranch      String?
+  prMergedAt        DateTime?
+  prMergeCommitSha  String?
+  repoPath          String
+  previewStarted    Boolean       @default(false)
+  previewStarting   Boolean       @default(false)
+  deployUrl         String?
+
+  installation   GitHubInstallation   @relation(fields: [installationId], references: [installationId], onDelete: Cascade)
+  messages       SessionMessage[]
+  logs           SessionLog[]
+  sideChat       SideChatMessage[]
+  terminal       TerminalSession?
+  agentRuns      AgentRun[]
+  queuedMessages QueuedAgentMessage[]
+
+  @@index([installationId, createdAt])
+  @@index([status, updatedAt])
+  @@index([repoFullName])
+}
+
+enum AgentRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model AgentRun {
+  id           String         @id @default(cuid())
+  sessionId    String
+  provider     String
+  model        String
+  status       AgentRunStatus @default(RUNNING)
+  requestId    String?        @unique
+  inputTokens  Int            @default(0)
+  outputTokens Int            @default(0)
+  totalTokens  Int            @default(0)
+  startedAt    DateTime       @default(now())
+  finishedAt   DateTime?
+  failure      String?        @db.Text
+  metadata     Json?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, startedAt])
+  @@index([provider, model, startedAt])
+}
+
+model QueuedAgentMessage {
+  id         String    @id @default(cuid())
+  sessionId  String
+  content    String    @db.Text
+  createdAt  DateTime  @default(now())
+  consumedAt DateTime?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, consumedAt, createdAt])
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PRO
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+// Billing records are prepared for the future subscription launch. No payment
+// provider or checkout flow is activated by this model alone.
+model Subscription {
+  id                     String             @id @default(cuid())
+  userId                 String
+  provider               String             @default("stripe")
+  providerCustomerId     String?
+  providerSubscriptionId String?            @unique
+  plan                   SubscriptionPlan
+  status                 SubscriptionStatus @default(INCOMPLETE)
+  priceCents             Int
+  currency               String             @default("usd")
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([providerCustomerId])
+}
+
+model SessionMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  sequence  Int
+  role      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, sequence])
+  @@index([sessionId, createdAt])
+}
+
+model SessionLog {
+  id        String         @id @default(cuid())
+  sessionId String
+  sequence  Int
+  time      DateTime       @default(now())
+  type      SessionLogType
+  text      String         @db.VarChar(2000)
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, sequence])
+  @@index([sessionId, time])
+}
+
+model SideChatMessage {
+  id        String       @id @default(cuid())
+  sessionId String
+  sequence  Int
+  role      SideChatRole
+  content   String       @db.Text
+  time      DateTime     @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, sequence])
+  @@index([sessionId, time])
+}
+
+model TerminalSession {
+  sessionId String   @id
+  pid       Int
+  cwd       String   @default("/home/user/repo")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model BackendMigration {
+  id          String   @id
+  completedAt DateTime @default(now())
+}

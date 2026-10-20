@@ -1,34 +1,44 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import { prisma } from "./db";
 
 export type SideChatMessage = {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   time: string;
 };
 
-const CHAT_FILE = path.join(import.meta.dir, 'data', 'side-chats.json');
-
-async function readChats(): Promise<Record<string, SideChatMessage[]>> {
-  try {
-    return JSON.parse(await fs.readFile(CHAT_FILE, 'utf8'));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
-    throw error;
-  }
-}
-
 export async function getSideChat(sessionId: string): Promise<SideChatMessage[]> {
-  return (await readChats())[sessionId] ?? [];
+  const rows = await prisma.sideChatMessage.findMany({
+    where: { sessionId },
+    orderBy: { sequence: "asc" },
+  });
+  return rows.map((row) => ({
+    role: row.role.toLowerCase() as SideChatMessage["role"],
+    content: row.content,
+    time: row.time.toISOString(),
+  }));
 }
 
 export async function appendSideChat(
   sessionId: string,
   messages: SideChatMessage[],
 ): Promise<SideChatMessage[]> {
-  const chats = await readChats();
-  chats[sessionId] = [...(chats[sessionId] ?? []), ...messages].slice(-200);
-  await fs.mkdir(path.dirname(CHAT_FILE), { recursive: true });
-  await fs.writeFile(CHAT_FILE, JSON.stringify(chats, null, 2));
-  return chats[sessionId];
+  await prisma.$transaction(async (tx) => {
+    const current = await tx.sideChatMessage.aggregate({
+      where: { sessionId },
+      _max: { sequence: true },
+    });
+    let sequence = (current._max.sequence ?? -1) + 1;
+    for (const message of messages) {
+      await tx.sideChatMessage.create({
+        data: {
+          sessionId,
+          sequence: sequence++,
+          role: message.role === "user" ? "USER" : "ASSISTANT",
+          content: message.content,
+          time: new Date(message.time),
+        },
+      });
+    }
+  });
+  return getSideChat(sessionId);
 }

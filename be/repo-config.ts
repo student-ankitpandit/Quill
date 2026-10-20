@@ -1,35 +1,12 @@
-import fs from "fs/promises";
-import path from "path";
+import { prisma } from "./db";
 
-const repoConfigFile = path.join(import.meta.dir, "data", "repo-configs.json");
 export interface RepoConfig {
   buildCommand?: string;
   testCommand?: string;
   runCommand?: string;
   installCommand?: string;
   port?: number;
-  hasUI?: boolean
-}
-interface DB {
-  [key: string]: RepoConfig; // keyed by `${installationId}:${repoFullName}`
-}
-
-async function readDB(): Promise<DB> {
-  try {
-    const raw = await fs.readFile(repoConfigFile, "utf-8");
-    return JSON.parse(raw);
-  } catch (err: any) {
-    if (err.code === "ENOENT") {
-      await fs.mkdir(path.dirname(repoConfigFile), { recursive: true });
-      await fs.writeFile(repoConfigFile, "{}");
-      return {};
-    }
-    throw err;
-  }
-}
-
-async function writeDB(data: DB): Promise<void> {
-  await fs.writeFile(repoConfigFile, JSON.stringify(data, null, 2));
+  hasUI?: boolean;
 }
 
 export function makeKey(installationId: string, repoFullName: string): string {
@@ -40,8 +17,18 @@ export async function getRepoConfig(
   installationId: string,
   repoFullName: string,
 ): Promise<RepoConfig | null> {
-  const db = await readDB();
-  return db[makeKey(installationId, repoFullName)] ?? null;
+  const row = await prisma.repositoryConfig.findUnique({
+    where: { installationId_repoFullName: { installationId, repoFullName } },
+  });
+  if (!row) return null;
+  return {
+    buildCommand: row.buildCommand ?? undefined,
+    testCommand: row.testCommand ?? undefined,
+    runCommand: row.runCommand ?? undefined,
+    installCommand: row.installCommand ?? undefined,
+    port: row.port ?? undefined,
+    hasUI: row.hasUI,
+  };
 }
 
 export async function saveRepoConfig(
@@ -49,9 +36,33 @@ export async function saveRepoConfig(
   repoFullName: string,
   config: RepoConfig,
 ): Promise<RepoConfig> {
-  const db = await readDB();
-  const key = makeKey(installationId, repoFullName);
-  db[key] = { ...db[key], ...config };
-  await writeDB(db);
-  return db[key];
+  const row = await prisma.repositoryConfig.upsert({
+    where: { installationId_repoFullName: { installationId, repoFullName } },
+    create: {
+      installationId,
+      repoFullName,
+      installCommand: config.installCommand,
+      buildCommand: config.buildCommand,
+      testCommand: config.testCommand,
+      runCommand: config.runCommand,
+      port: config.port,
+      hasUI: config.hasUI ?? true,
+    },
+    update: {
+      ...(config.installCommand !== undefined ? { installCommand: config.installCommand } : {}),
+      ...(config.buildCommand !== undefined ? { buildCommand: config.buildCommand } : {}),
+      ...(config.testCommand !== undefined ? { testCommand: config.testCommand } : {}),
+      ...(config.runCommand !== undefined ? { runCommand: config.runCommand } : {}),
+      ...(config.port !== undefined ? { port: config.port } : {}),
+      ...(config.hasUI !== undefined ? { hasUI: config.hasUI } : {}),
+    },
+  });
+  return {
+    buildCommand: row.buildCommand ?? undefined,
+    testCommand: row.testCommand ?? undefined,
+    runCommand: row.runCommand ?? undefined,
+    installCommand: row.installCommand ?? undefined,
+    port: row.port ?? undefined,
+    hasUI: row.hasUI,
+  };
 }

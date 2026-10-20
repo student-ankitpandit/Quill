@@ -35,6 +35,8 @@ import { connectSessionSandbox, isSandboxNotFoundError, loadOwned } from "./lib"
 import { saveInstallation } from "./installations";
 import { appendSideChat, getSideChat } from "./side-chat";
 import { getTerminalPid, setTerminalPid } from "./terminal-sessions";
+import { migrateLegacyJsonData } from "./legacy-data-migration";
+import { prisma } from "./db";
 
 const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
 const REPO_DIR = "/home/user/repo";
@@ -378,6 +380,11 @@ app.get("/api/auth/profile", async (req, res) => {
         }
       }
     }
+    await storage.updateProfile(req.userId, {
+      ...(login ? { login } : {}),
+      ...(name ? { name } : {}),
+      ...(email ? { email } : {}),
+    });
     return res.json({
       userId: publicUserId,
       name,
@@ -919,10 +926,10 @@ app.post("/api/app/sessions/:sessionId/side-chat", async (req, res) => {
   if (!question) return res.status(400).json({ error: "Enter a question first." });
   if (question.length > 10_000) return res.status(400).json({ error: "Message is too long." });
   try {
-    const answer = await answerSideChat(session, question);
     const now = new Date().toISOString();
+    await appendSideChat(session.id, [{ role: "user", content: question, time: now }]);
+    const answer = await answerSideChat(session, question);
     const messages = await appendSideChat(session.id, [
-      { role: "user", content: question, time: now },
       { role: "assistant", content: answer, time: new Date().toISOString() },
     ]);
     return res.json({ messages });
@@ -962,7 +969,7 @@ app.post("/api/sessions/:sessionId/messages", async (req, res) => {
     }
 
     if (session.status === "running") {
-      queueAgentMessage(session.id, message);
+      await queueAgentMessage(session.id, message);
       publish(session.id, {
         type: "message",
         data: { role: "user", content: message },
@@ -1343,6 +1350,13 @@ app.post("/api/app/sessions/:sessionId/deploy", async (req, res) => {
   }
 });
 
-app.listen(3001, "0.0.0.0", () => {
-  console.log("server is up and running on port 3001");
-});
+try {
+  await prisma.$connect();
+  await migrateLegacyJsonData();
+  app.listen(3001, "0.0.0.0", () => {
+    console.log("server is up and running on port 3001");
+  });
+} catch (error) {
+  console.error("Could not initialize PostgreSQL persistence:", error);
+  process.exitCode = 1;
+}

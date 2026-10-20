@@ -243,7 +243,7 @@ router.delete("/:sessionId", async (req, res) => {
         // already expired or killed, nothing to clean up
     }
 
-    deleteSession(session.id);
+    await deleteSession(session.id);
     res.sendStatus(204);
 });
 
