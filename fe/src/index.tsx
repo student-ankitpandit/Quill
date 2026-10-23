@@ -29,7 +29,7 @@ const server = serve({
     },
   },
 
-  development: process.env.NODE_ENV !== "production",
+  development: typeof process !== "undefined" && process.env.NODE_ENV !== "production",
 });
 
 console.log(`🚀 Server running at ${server.url}`);
