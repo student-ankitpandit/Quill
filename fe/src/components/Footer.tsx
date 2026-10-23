@@ -1,5 +1,5 @@
 import { ArrowUpRight, Feather, Github, Linkedin } from "lucide-react";
-import "./SiteFooter.css";
+import "./Footer.css";
 
 const policyLinks = [
   { label: "Refund policy", href: "/refund-policy" },
