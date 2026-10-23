@@ -1,5 +1,6 @@
-// Single place for every backend call. If a path differs from yours, change it in ROUTES only.
-const API_BASE: string = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:3001';
+// Share the same configured backend URL as the rest of the frontend.
+import { API_BASE_URL } from "@/lib/api";
+const API_BASE = API_BASE_URL;
 
 const ROUTES = {
   repos: '/api/github/repos',
