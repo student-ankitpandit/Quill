@@ -1,6 +1,4 @@
-const defaultBackendUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-  ? "http://localhost:3001"
-  : "https://quill-c05l.onrender.com";
+const defaultBackendUrl = "https://quill-c05l.onrender.com";
 const configuredBackendUrl =
   typeof process !== "undefined" ? process.env.BUN_PUBLIC_API_URL?.trim() : undefined;
 export const API_BASE_URL = (configuredBackendUrl || defaultBackendUrl)
