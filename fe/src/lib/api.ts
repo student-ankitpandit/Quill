@@ -454,8 +454,10 @@ export function getInstallUrl(): string {
 }
 
 export function getManageInstallUrl(): string {
-  const id = getInstallationId();
-  if (id) return `https://github.com/settings/installations/${id}`;
+  // Route through the app's public page so GitHub resolves the installation
+  // for the account currently signed in. A cached installation ID can be
+  // stale or belong to a different GitHub account, which produces a 404 at
+  // /settings/installations/:id.
   return getInstallUrl();
 }
 
