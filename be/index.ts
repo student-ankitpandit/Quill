@@ -5,7 +5,6 @@ import {
   getGithubUser,
   getUserAppInstallation,
   refreshGithubAccessToken,
-  findAppInstallationForGithubUser,
   getInstallationOctokit,
   getInstallationToken,
 } from "./lib";
@@ -22,7 +21,7 @@ import { getRepoConfig, saveRepoConfig } from "./repo-config";
 import axios from "axios";
 import Sandbox from "@e2b/code-interpreter";
 import { randomUUID } from "node:crypto";
-import { posix as pathPosix } from "node:path";
+
 import {
   answerSideChat,
   isInformationalQuestion,
@@ -47,123 +46,12 @@ import { appendSideChat, getSideChat } from "./side-chat";
 import { getTerminalPid, setTerminalPid } from "./terminal-sessions";
 import { migrateLegacyJsonData } from "./legacy-data-migration";
 import { prisma } from "./db";
+import { quoteShell, workspacePath, assertWorkspacePathInside, signUserToken, resolveInstallationId } from "./lib"
 
 const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
 const REPO_DIR = "/home/user/repo";
 const SAFE = /^[\w-]+$/;
 const publishing = new Set<string>();
-
-function quoteShell(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
-function workspacePath(input: unknown): { relative: string; absolute: string } {
-  const requested = typeof input === "string" ? input : "";
-  if (requested.split(/[\\/]+/).some((segment) => segment === "..")) {
-    throw new Error("Path must stay inside the repository workspace.");
-  }
-  const relative = pathPosix.normalize(`/${requested}`).replace(/^\/+/, "");
-  if (relative === ".." || relative.startsWith("../")) {
-    throw new Error("Path must stay inside the repository workspace.");
-  }
-  const absolute = pathPosix.resolve(REPO_DIR, relative);
-  if (absolute !== REPO_DIR && !absolute.startsWith(`${REPO_DIR}/`)) {
-    throw new Error("Path must stay inside the repository workspace.");
-  }
-  return { relative, absolute };
-}
-
-async function assertWorkspacePathInside(
-  sandbox: Awaited<ReturnType<typeof connectSessionSandbox>>,
-  absolute: string,
-) {
-  const result = await sandbox.commands.run(
-    `realpath -e -- ${quoteShell(absolute)}`,
-    {
-      cwd: REPO_DIR,
-      timeoutMs: 10_000,
-    },
-  );
-  const realPath = result.stdout.trim();
-  if (realPath !== REPO_DIR && !realPath.startsWith(`${REPO_DIR}/`)) {
-    throw new Error("Path resolves outside the repository workspace.");
-  }
-  return realPath;
-}
-
-function signUserToken(payload: {
-  installationId?: string;
-  userId: string;
-  login?: string;
-  name?: string;
-  email?: string | null;
-}) {
-  return jwt.sign(
-    {
-      installationId: payload.installationId || "",
-      userId: payload.userId,
-      login: payload.login,
-      name: payload.name,
-      email: payload.email,
-    },
-    process.env.GITHUB_PRIVATE_KEY!,
-    { algorithm: "RS256", expiresIn: "7d" },
-  );
-}
-
-async function resolveInstallationId(opts: {
-  installationId?: string;
-  userId?: string;
-  githubUserId?: string | number;
-  login?: string | null;
-  accessToken?: string;
-  preferredInstallationId?: string;
-}): Promise<string> {
-  let instId = "";
-
-  if (opts.accessToken) {
-    try {
-      instId = await getUserAppInstallation(
-        opts.accessToken,
-        process.env.GITHUB_APP_ID || "",
-        opts.preferredInstallationId,
-      );
-    } catch (error) {
-      console.warn(
-        "Could not discover an existing GitHub App installation",
-        error,
-      );
-    }
-  }
-  if (instId) return instId;
-
-  instId = opts.installationId?.trim() || "";
-  if (instId) return instId;
-
-  if (opts.userId) {
-    try {
-      instId = (await storage.findByUserId(opts.userId))?.installation_id ?? "";
-    } catch (error) {
-      console.warn("Could not look up a stored GitHub App installation", error);
-    }
-  }
-  if (instId) return instId;
-
-  try {
-    instId = await findAppInstallationForGithubUser({
-      githubUserId: opts.githubUserId ?? opts.userId,
-      login: opts.login,
-    });
-  } catch (error) {
-    console.warn(
-      "Could not match a GitHub App installation to this user",
-      error,
-    );
-  }
-  if (instId) return instId;
-
-  return process.env.GITHUB_INSTALLATION_ID?.trim() || "";
-}
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
@@ -188,32 +76,24 @@ app.get("/health", (req, res) => {
 // GitHub OAuth: redirect user to GitHub's authorize page
 app.get("/api/auth/github", (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
+  if (!clientId) {
+    return res.status(503).send("GitHub OAuth is not configured on the backend.");
+  }
   const installationId =
     typeof req.query.installation_id === "string"
       ? req.query.installation_id
       : "";
-  const redirectUri = `${process.env.BACKEND_URL || "http://localhost:3001"}/api/auth/github/callback`;
+  const backendUrl = (process.env.BACKEND_URL || "http://localhost:3001")
+    .trim()
+    .replace(/\/+$/, "");
+  const redirectUri = `${backendUrl}/api/auth/github/callback`;
   const scope = "user:email,read:user,read:org,offline_access";
   const state = installationId
     ? `&state=${encodeURIComponent(installationId)}`
     : "";
-  const url = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId || "")}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}${state}`;
+  const url = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}${state}`;
   res.redirect(url);
 });
-
-// // GitHub App Setup URL: continue login after the user installs the App.
-// app.get('/api/app/github/callback', async (req, res) => {
-
-//   console.log("callback hit", req.query);
-
-//   const { installation_id, setup_action } = req.query;
-//   if (!installation_id) return res.status(400).send('Missing installation_id');
-
-//   // save installation_id the way you already do
-//   await saveInstallation(String(installation_id));
-
-//   res.redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/dashboard`);
-// });
 
 app.get("/api/auth/github/callback", async (req, res) => {
   const { code, installation_id, setup_action, state } = req.query;
@@ -258,12 +138,8 @@ app.get("/api/auth/github/callback", async (req, res) => {
     const callbackInstallationId =
       typeof installation_id === "string" ? installation_id : "";
     const instId = await resolveInstallationId({
-      installationId:
-        callbackInstallationId || (typeof state === "string" ? state : ""),
-      preferredInstallationId: callbackInstallationId || undefined,
-      userId,
-      githubUserId: githubUser.id,
-      login: githubUser.login,
+      preferredInstallationId:
+        callbackInstallationId || (typeof state === "string" ? state : undefined),
       accessToken: tokenResponse.accessToken,
     });
     if (instId) {
@@ -442,41 +318,36 @@ app.get("/api/auth/installation", async (req, res) => {
   let refreshToken: string | null = null;
   let storedInstallation: InstallationData | null = null;
 
-  if (req.userId) {
-    try {
-      storedInstallation = await storage.findByUserId(req.userId);
-      if (!storedInstallation?.refreshToken) {
-        return res.json({ reauthenticate: true });
-      }
-      if (storedInstallation.refreshToken) {
-        const clientId = process.env.GITHUB_CLIENT_ID;
-        const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-        if (clientId && clientSecret) {
-          const refreshed = await refreshGithubAccessToken(
-            storedInstallation.refreshToken,
-            clientId,
-            clientSecret,
-          );
-          refreshToken = refreshed.refreshToken;
-          instId = await getUserAppInstallation(
-            refreshed.accessToken,
-            process.env.GITHUB_APP_ID || "",
-          );
-        }
-      }
-    } catch (error) {
-      console.warn("Could not refresh GitHub installation access", error);
+  if (!req.userId) return res.status(401).json({ error: "Missing user account" });
+  try {
+    storedInstallation = await storage.findByUserId(req.userId);
+    if (!storedInstallation) {
+      return res.json({ installationId: null, token: null });
+    }
+    if (!storedInstallation.refreshToken) {
       return res.json({ reauthenticate: true });
     }
-  }
 
-  if (!instId) {
-    instId = await resolveInstallationId({
-      installationId: req.installationId,
-      userId: req.userId,
-      githubUserId: req.userId,
-      login: req.login,
-    });
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      return res.status(503).json({ error: "GitHub OAuth is not configured" });
+    }
+
+    const refreshed = await refreshGithubAccessToken(
+      storedInstallation.refreshToken,
+      clientId,
+      clientSecret,
+    );
+    refreshToken = refreshed.refreshToken;
+    instId = await getUserAppInstallation(
+      refreshed.accessToken,
+      process.env.GITHUB_APP_ID || "",
+      storedInstallation.installation_id,
+    );
+  } catch (error) {
+    console.warn("Could not refresh this user's GitHub installation access", error);
+    return res.json({ reauthenticate: true });
   }
 
   if (!instId) {
@@ -502,34 +373,51 @@ app.get("/api/auth/installation", async (req, res) => {
 });
 
 app.get("/api/github/repos", async (req, res) => {
-  const installation_id =
-    (typeof req.query.installation_id === "string" &&
-      req.query.installation_id) ||
-    req.installationId;
+  const installation_id = req.installationId;
 
   if (!installation_id) {
     return res.status(400).json({ error: "Missing installation_id" });
   }
 
-  const authToken = await getInstallationToken(installation_id);
-
   try {
-    const resposRes = await axios.get(
-      "https://api.github.com/installation/repositories",
-      {
+    const authToken = await getInstallationToken(installation_id);
+    const repositories: Array<Record<string, unknown>> = [];
+    let page = 1;
+    let totalCount = Number.POSITIVE_INFINITY;
+
+    while (repositories.length < totalCount) {
+      const response = await axios.get<{
+        total_count: number;
+        repositories: Array<Record<string, unknown>>;
+      }>("https://api.github.com/installation/repositories", {
         headers: {
           Authorization: `Bearer ${authToken}`,
           Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
         },
-      },
-    );
+        params: { per_page: 100, page },
+        timeout: 15_000,
+      });
 
-    const data = await resposRes.data;
-    return res.json(data.repositories);
-  } catch (e) {
-    console.log(e);
-    return res.status(500).json({
-      error: "Failed to fetch repos",
+      repositories.push(...response.data.repositories);
+      totalCount = response.data.total_count;
+      if (response.data.repositories.length === 0) break;
+      page += 1;
+    }
+
+    return res.json(repositories);
+  } catch (error) {
+    const githubStatus = axios.isAxiosError(error)
+      ? error.response?.status
+      : undefined;
+    console.error(
+      "Failed to list repositories for the GitHub App installation:",
+      githubStatus ? `GitHub returned HTTP ${githubStatus}` : error,
+    );
+    return res.status(502).json({
+      error: githubStatus
+        ? `GitHub could not list this app installation's repositories (HTTP ${githubStatus}). Reconnect the GitHub App and try again.`
+        : "Could not load repositories from this GitHub App installation.",
     });
   }
 });
@@ -1636,8 +1524,9 @@ app.post("/api/app/sessions/:sessionId/deploy", async (req, res) => {
 try {
   await prisma.$connect();
   await migrateLegacyJsonData();
-  app.listen(3001, "0.0.0.0", () => {
-    console.log("server is up and running on port 3001");
+  const port = Number(process.env.PORT || process.env.SERVER_PORT || 3001);
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`server is up and running on port ${port}`);
   });
 } catch (error) {
   console.error("Could not initialize PostgreSQL persistence:", error);

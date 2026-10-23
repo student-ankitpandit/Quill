@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getInstallUrl } from "@/lib/api";
 import {
   createSession,
@@ -62,7 +62,7 @@ export default function NewSession({
   const voiceBaseRef = useRef("");
   const voiceTranscriptRef = useRef("");
 
-  async function loadRepos() {
+  const loadRepos = useCallback(async () => {
     setError("");
     try {
       const r = await listRepos();
@@ -79,11 +79,27 @@ export default function NewSession({
         ? "Could not reach Quill’s server. Check that it’s running, then retry."
         : e.message);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void loadRepos();
-  }, []);
+  }, [loadRepos]);
+
+  useEffect(() => {
+    const refreshWhenReturning = () => void loadRepos();
+    const refreshAfterAuthChanges = (event: StorageEvent) => {
+      if (event.key === "quill_token" || event.key === "quill_installation_id") {
+        void loadRepos();
+      }
+    };
+
+    window.addEventListener("focus", refreshWhenReturning);
+    window.addEventListener("storage", refreshAfterAuthChanges);
+    return () => {
+      window.removeEventListener("focus", refreshWhenReturning);
+      window.removeEventListener("storage", refreshAfterAuthChanges);
+    };
+  }, [loadRepos]);
 
   useEffect(() => {
     if (!repos?.length || !task.trim()) return;
@@ -195,6 +211,9 @@ export default function NewSession({
         >
           Choose repositories
         </a>
+        <button className="btn btn-quiet" type="button" onClick={loadRepos}>
+          Refresh repositories
+        </button>
       </section>
     );
   }
