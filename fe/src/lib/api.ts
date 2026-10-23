@@ -450,9 +450,13 @@ export function clearInstallation() {
 const GITHUB_APP_SLUG = "helloquill-ai-integration";
 
 export function getInstallUrl(): string {
+  return `https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`;
+}
+
+export function getManageInstallUrl(): string {
   const id = getInstallationId();
   if (id) return `https://github.com/settings/installations/${id}`;
-  return `https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`;
+  return getInstallUrl();
 }
 
 export function hasInstallation(): boolean {

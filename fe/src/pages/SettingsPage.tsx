@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ExternalLink, LayoutGrid, Search } from "lucide-react";
-import { clearAuth, getInstallUrl, isLoggedIn } from "@/lib/api";
+import { clearAuth, getManageInstallUrl, isLoggedIn } from "@/lib/api";
 import { navigate } from "@/lib/router";
 import "./SettingsPage.css";
 
@@ -30,7 +30,7 @@ export default function Settings() {
           <div className="settings-card-body">
             <p>{githubConnected ? "Quill can access the repositories granted to your GitHub App installation." : "Connect your GitHub account to choose repositories and work on them with Quill."}</p>
             <div className="settings-connection-actions">
-              <a className="btn btn-quiet settings-manage-link" href={getInstallUrl()} target="_blank" rel="noreferrer">{githubConnected ? "Manage repository access" : "Connect GitHub"}<ExternalLink size={15} /></a>
+              <a className="btn btn-quiet settings-manage-link" href={getManageInstallUrl()} target="_blank" rel="noreferrer">{githubConnected ? "Manage repository access" : "Connect GitHub"}<ExternalLink size={15} /></a>
               {githubConnected && <button className="btn btn-quiet settings-disconnect" type="button" onClick={() => { clearAuth(); navigate({ page: "landing" }); }}>Disconnect GitHub</button>}
             </div>
           </div>
