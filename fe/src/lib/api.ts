@@ -1,6 +1,8 @@
 const defaultBackendUrl = "https://quill-c05l.onrender.com";
 const configuredBackendUrl =
-  typeof process !== "undefined" ? process.env.BUN_PUBLIC_API_URL?.trim() : undefined;
+  typeof process !== "undefined" && typeof process.env?.BUN_PUBLIC_API_URL === "string"
+    ? process.env.BUN_PUBLIC_API_URL.trim()
+    : undefined;
 export const API_BASE_URL = (configuredBackendUrl || defaultBackendUrl)
   .replace(/\/+$/, "");
 const BACKEND_URL = API_BASE_URL;
