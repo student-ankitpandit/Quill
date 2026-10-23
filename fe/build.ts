@@ -126,7 +126,6 @@ console.log("\n🚀 Starting build process...\n");
 // Parse CLI arguments with our magical parser
 const cliConfig = parseArgs();
 const outdir = cliConfig.outdir || path.join(process.cwd(), "dist");
-
 if (existsSync(outdir)) {
   console.log(`🗑️ Cleaning previous build at ${outdir}`);
   await rm(outdir, { recursive: true, force: true });
@@ -151,6 +150,7 @@ const result = await build({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },
+  env: "BUN_PUBLIC_*",
   ...cliConfig, // Merge in any CLI-provided options
 });
 
