@@ -4,10 +4,12 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "bun build index.ts --outdir dist",
+    "build": "bun build index.ts --outdir dist --target bun",
     "start": "bun run dist/index.js",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
   },
   "devDependencies": {
     "@types/axios": "^0.14.4",
