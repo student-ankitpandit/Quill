@@ -1,4 +1,7 @@
-const BACKEND_URL = "http://localhost:3001";
+const defaultBackendUrl = "https://quill-c05l.onrender.com";
+export const API_BASE_URL = (process.env.BUN_PUBLIC_API_URL?.trim() || defaultBackendUrl)
+  .replace(/\/+$/, "");
+const BACKEND_URL = API_BASE_URL;
 
 export type SessionStatus =
   | "ready"
@@ -412,11 +415,9 @@ function installationIdFromToken(token = localStorage.getItem("quill_token")): s
 
 export function saveAuth(token: string, installationId?: string) {
   localStorage.setItem("quill_token", token);
-  const id =
-    installationId?.trim() ||
-    installationIdFromToken(token) ||
-    localStorage.getItem("quill_installation_id")?.trim();
+  const id = installationId?.trim() || installationIdFromToken(token);
   if (id) localStorage.setItem("quill_installation_id", id);
+  else localStorage.removeItem("quill_installation_id");
 }
 
 export function saveInstallation(installationId: string) {
