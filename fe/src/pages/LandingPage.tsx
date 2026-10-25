@@ -447,7 +447,7 @@ export function LandingPage() {
               For everyday repository questions and focused coding tasks.
             </p>
             <div className="pricing-price">
-              <span className="pricing-currency">₹</span>855
+              <span className="pricing-currency">₹</span>799
               <span className="pricing-period">/ month</span>
             </div>
             <div className="pricing-price-note">
@@ -483,7 +483,7 @@ export function LandingPage() {
               For heavier use, bigger projects, and more demanding work.
             </p>
             <div className="pricing-price">
-              <span className="pricing-currency">₹</span>1,805
+              <span className="pricing-currency">₹</span>1,599
               <span className="pricing-period">/ month</span>
             </div>
             <div className="pricing-price-note">
@@ -493,19 +493,11 @@ export function LandingPage() {
             <ul>
               <li>
                 <Check size={15} />
-                Higher usage limits
-              </li>
-              <li>
-                <Check size={15} />
-                Access to more capable models
-              </li>
-              <li>
-                <Check size={15} />
                 Everything in Basic
               </li>
               <li>
                 <Check size={15} />
-                More room for complex coding tasks
+                Higher usage limits
               </li>
             </ul>
             <button
