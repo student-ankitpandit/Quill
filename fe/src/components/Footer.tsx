@@ -1,11 +1,12 @@
-import { ArrowUpRight, Feather, Github, Linkedin } from "lucide-react";
+import { QuillMark } from "@/components/QuillMark";
+import { ArrowUpRight, Github, Linkedin } from "lucide-react";
 import "./Footer.css";
 
 const policyLinks = [
-  { label: "Refund policy", href: "/refund-policy" },
-  { label: "Return policy", href: "/return-policy" },
-  { label: "Privacy policy", href: "/privacy-policy" },
-  { label: "Terms & conditions", href: "/terms" },
+  { label: "Refund policy", href: "/#/refund-policy" },
+  { label: "Return policy", href: "/#/return-policy" },
+  { label: "Privacy policy", href: "/#/privacy-policy" },
+  { label: "Terms & conditions", href: "/#/terms" },
 ];
 
 export function SiteFooter() {
@@ -13,11 +14,11 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="site-footer-main">
         <div className="site-footer-brand">
-          <a className="site-brand" href="/" aria-label="Quill home">
-            <span className="site-brand-mark"><Feather size={16} strokeWidth={2.2} /></span>
-            <span>Quill<span className="site-brand-period">.</span></span>
+          <a className="site-brand" href="/" aria-label="quill home">
+            <span className="site-brand-mark"><QuillMark size={16} /></span>
+            <span>quill</span>
           </a>
-          <p>Thoughtful code, shipped together.</p>
+          <p>Coding is easy, Designing systems is what relevant.</p>
         </div>
 
         <nav className="site-footer-links" aria-label="Policies">
@@ -25,7 +26,7 @@ export function SiteFooter() {
           {policyLinks.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
         </nav>
 
-        <nav className="site-footer-social" aria-label="Connect with Quill">
+        <nav className="site-footer-social" aria-label="Connect with quill">
           <h2>Connect</h2>
           <a href="https://x.com/ankitpanditdev" target="_blank" rel="noreferrer">
             <span className="x-social-mark" aria-hidden="true">𝕏</span> X <ArrowUpRight size={13} />
@@ -39,8 +40,13 @@ export function SiteFooter() {
         </nav>
       </div>
       <div className="site-footer-bottom">
-        <span>© {new Date().getFullYear()} Quill</span>
-        <span>Built for people who care about their code.</span>
+        <span>© {new Date().getFullYear()} quill</span>
+        <span>
+          Built by{" "}
+          <a href="https://x.com/ankitpanditdev" target="_blank" rel="noreferrer">
+            @ankitpanditdev
+          </a>
+        </span>
       </div>
     </footer>
   );

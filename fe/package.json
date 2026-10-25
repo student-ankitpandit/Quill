@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "bun run --hot src/index.tsx",
     "start": "NODE_ENV=production bun src/index.tsx",
-    "build": "bun run build.ts",
+    "build": "bun run build.ts --outdir dist",
     "dev:css": "tailwindcss -i ./src/index.css -o ./src/output.css --watch",
     "dev:server": "bun --hot src/index.tsx",
     "build:css": "tailwindcss -i ./src/index.css -o ./src/output.css --minify"

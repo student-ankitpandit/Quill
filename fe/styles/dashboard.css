@@ -91,8 +91,8 @@ a {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: var(--accent);
-  color: var(--on-accent);
+  background: transparent;
+  color: var(--accent);
   display: grid;
   place-items: center;
 }

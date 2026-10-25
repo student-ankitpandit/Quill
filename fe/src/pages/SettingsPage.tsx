@@ -1,8 +1,14 @@
 import { useMemo, useState } from "react";
 import { ExternalLink, LayoutGrid, Search } from "lucide-react";
 import { clearAuth, getManageInstallUrl, isLoggedIn } from "@/lib/api";
-import { navigate } from "@/lib/router";
 import "./SettingsPage.css";
+
+function disconnectGithub() {
+  clearAuth();
+  // Reload the app after clearing the saved credentials so every route and
+  // component immediately reflects the signed-out state.
+  window.location.replace("/");
+}
 
 export default function Settings() {
   const [search, setSearch] = useState("");
@@ -31,7 +37,7 @@ export default function Settings() {
             <p>{githubConnected ? "Quill can access the repositories granted to your GitHub App installation." : "Connect your GitHub account to choose repositories and work on them with Quill."}</p>
             <div className="settings-connection-actions">
               <a className="btn btn-quiet settings-manage-link" href={getManageInstallUrl()} target="_blank" rel="noreferrer">{githubConnected ? "Manage repository access" : "Connect GitHub"}<ExternalLink size={15} /></a>
-              {githubConnected && <button className="btn btn-quiet settings-disconnect" type="button" onClick={() => { clearAuth(); navigate({ page: "landing" }); }}>Disconnect GitHub</button>}
+              {githubConnected && <button className="btn btn-quiet settings-disconnect" type="button" onClick={disconnectGithub}>Disconnect GitHub</button>}
             </div>
           </div>
         </div>

@@ -5,6 +5,12 @@ import type { Request, Response } from "express";
 import { Sandbox } from "e2b";
 import { getSession } from "./sessions";
 import type { Session } from "./sessions";
+import { posix as pathPosix } from "node:path";
+
+const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
+const REPO_DIR = "/home/user/repo";
+const SAFE = /^[\w-]+$/;
+const publishing = new Set<string>();
 
 type GithubTokenResponse = {
   access_token?: string;
@@ -186,68 +192,7 @@ export async function getUserAppInstallation(
   );
   const matched =
     preferred ??
-    appInstallations.sort((a, b) => b.id - a.id)[0] ??
-    (installations.length === 1 ? installations[0] : undefined);
-  return matched ? String(matched.id) : "";
-}
-
-type AppInstallation = {
-  id: number;
-  account?: {
-    id?: number;
-    login?: string;
-    type?: string;
-  };
-};
-
-async function listAppInstallations(): Promise<AppInstallation[]> {
-  const appJWT = getAppJWT();
-  const results: AppInstallation[] = [];
-
-  for (let page = 1; page <= 10; page++) {
-    const response = await axios.get<
-      AppInstallation[] | { installations?: AppInstallation[] }
-    >("https://api.github.com/app/installations", {
-      headers: {
-        Authorization: `Bearer ${appJWT}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-      params: { per_page: 100, page },
-    });
-
-    const batch = Array.isArray(response.data)
-      ? response.data
-      : (response.data.installations ?? []);
-    results.push(...batch);
-    if (batch.length < 100) break;
-  }
-
-  return results;
-}
-
-export async function findAppInstallationForGithubUser(opts: {
-  githubUserId?: string | number;
-  login?: string | null;
-}): Promise<string> {
-  const installations = await listAppInstallations();
-  if (installations.length === 0) return "";
-  const firstInstallation = installations[0];
-  if (installations.length === 1 && firstInstallation) {
-    return String(firstInstallation.id);
-  }
-
-  const userId = String(opts.githubUserId ?? "").replace(/^github/, "");
-  const login = opts.login?.trim().toLowerCase() ?? "";
-
-  const matched = installations.find((item) => {
-    const accountId = String(item.account?.id ?? "");
-    const accountLogin = item.account?.login?.toLowerCase() ?? "";
-    if (userId && accountId === userId) return true;
-    if (login && accountLogin === login) return true;
-    return false;
-  });
-
+    appInstallations.sort((a, b) => b.id - a.id)[0];
   return matched ? String(matched.id) : "";
 }
 
@@ -351,4 +296,87 @@ export async function connectSessionSandbox(
   // rather than be destroyed, when this timeout elapses.
   await sandbox.setTimeout(30 * 60 * 1000);
   return sandbox;
+}
+
+export function quoteShell(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+export function workspacePath(input: unknown): { relative: string; absolute: string } {
+  const requested = typeof input === "string" ? input : "";
+  if (requested.split(/[\\/]+/).some((segment) => segment === "..")) {
+    throw new Error("Path must stay inside the repository workspace.");
+  }
+  const relative = pathPosix.normalize(`/${requested}`).replace(/^\/+/, "");
+  if (relative === ".." || relative.startsWith("../")) {
+    throw new Error("Path must stay inside the repository workspace.");
+  }
+  const absolute = pathPosix.resolve(REPO_DIR, relative);
+  if (absolute !== REPO_DIR && !absolute.startsWith(`${REPO_DIR}/`)) {
+    throw new Error("Path must stay inside the repository workspace.");
+  }
+  return { relative, absolute };
+}
+
+export async function assertWorkspacePathInside(
+  sandbox: Awaited<ReturnType<typeof connectSessionSandbox>>,
+  absolute: string,
+) {
+  const result = await sandbox.commands.run(
+    `realpath -e -- ${quoteShell(absolute)}`,
+    {
+      cwd: REPO_DIR,
+      timeoutMs: 10_000,
+    },
+  );
+  const realPath = result.stdout.trim();
+  if (realPath !== REPO_DIR && !realPath.startsWith(`${REPO_DIR}/`)) {
+    throw new Error("Path resolves outside the repository workspace.");
+  }
+  return realPath;
+}
+
+export function signUserToken(payload: {
+  installationId?: string;
+  userId: string;
+  login?: string;
+  name?: string;
+  email?: string | null;
+}) {
+  return jwt.sign(
+    {
+      installationId: payload.installationId || "",
+      userId: payload.userId,
+      login: payload.login,
+      name: payload.name,
+      email: payload.email,
+    },
+    process.env.GITHUB_PRIVATE_KEY!,
+    { algorithm: "RS256", expiresIn: "7d" },
+  );
+}
+
+export async function resolveInstallationId(opts: {
+  accessToken?: string;
+  preferredInstallationId?: string;
+}): Promise<string> {
+  // Resolve from the authenticated user's own GitHub installation list.
+  // Never fall back to a global installation ID: that would let every Quill
+  // account act through the operator's GitHub installation.
+  if (opts.accessToken) {
+    try {
+      const installationId = await getUserAppInstallation(
+        opts.accessToken,
+        process.env.GITHUB_APP_ID || "",
+        opts.preferredInstallationId,
+      );
+      if (installationId) return installationId;
+    } catch (error) {
+      console.warn(
+        "Could not discover a GitHub App installation for the authenticated user",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+  return "";
 }

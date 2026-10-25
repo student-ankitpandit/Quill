@@ -1,0 +1,343 @@
+/* The marketing page is the only light-themed surface. */
+.quill-home {
+  color-scheme: light;
+  --home-bg: #fbfcfd;
+  --home-panel: #ffffff;
+  --home-panel-raised: #f6f7f9;
+  --home-line: #e8ebef;
+  --home-muted: #626c79;
+  --home-dim: #87909b;
+  --home-orange: #ef7918;
+  --home-orange-soft: #d9690e;
+  color: #20242b !important;
+  background: #fbfcfd !important;
+}
+
+/* Page CSS is imported by the route after the entry stylesheet, so these
+   high-priority landing rules prevent its dark defaults from winning. */
+.quill-home .home-brand,
+.quill-home .hero-copy h1,
+.quill-home .home-nav-cta,
+.quill-home .hero-description,
+.quill-home .home-text-cta,
+.quill-home .home-proof,
+.quill-home .workflow-step h3,
+.quill-home .feature-grid h3,
+.quill-home .usecase-card h3,
+.quill-home .pricing-heading h1,
+.quill-home .pricing-heading h2,
+.quill-home .pricing-plan-name,
+.quill-home .pricing-price {
+  color: #20242b !important;
+}
+.quill-home .home-nav-links a,
+.quill-home .home-signin,
+.quill-home .hero-badge,
+.quill-home .hero-reassurance,
+.quill-home .workflow-step p,
+.quill-home .feature-grid p,
+.quill-home .usecase-card p,
+.quill-home .faq-list details p {
+  color: #626c79 !important;
+}
+.quill-home .home-nav-cta,
+.quill-home .hero-badge,
+.quill-home .workflow-step,
+.quill-home .feature-grid article,
+.quill-home .usecase-card,
+.quill-home .pricing-card,
+.quill-home .faq-list details {
+  background: #fff !important;
+}
+.quill-home .home-primary-cta {
+  color: #fff !important;
+  background: #f58220 !important;
+}
+
+.quill-home .home-orb-a { background: rgba(245, 130, 32, .07); }
+.quill-home .home-orb-b { background: rgba(89, 127, 179, .055); }
+.quill-home .home-nav {
+  border-bottom-color: #e9edf1;
+  background: rgba(251, 252, 253, .94) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.quill-home .home-brand { color: #20242b; }
+.quill-home .home-brand-mark { color: #ef7918; }
+.quill-home .home-nav-links a,
+.quill-home .home-signin { color: #5c6571; }
+.quill-home .home-nav-links a:hover,
+.quill-home .home-signin:hover { color: #20242b; }
+.quill-home .home-nav-cta {
+  color: #29303a;
+  border-color: #dfe3e8;
+  background: #fff;
+  box-shadow: 0 1px 2px #18202a0a;
+}
+.quill-home .home-nav-cta:hover { border-color: #f4ba8c; background: #fff8f2; }
+.quill-home .hero-badge {
+  color: #586270;
+  border-color: #e6e9ee;
+  background: #fff;
+  box-shadow: 0 1px 2px #18202a08;
+}
+.quill-home .hero-copy h1 { color: #20242b; }
+.quill-home .hero-description { color: #65707d; }
+.quill-home .home-primary-cta {
+  border-color: #e97618;
+  color: #fff;
+  background: #f58220;
+  box-shadow: 0 6px 16px rgba(226, 112, 20, .17);
+}
+.quill-home .home-primary-cta:hover { background: #e97212; }
+.quill-home .home-primary-cta svg:first-child { color: #fff; }
+.quill-home .home-text-cta { color: #4e5865; }
+.quill-home .hero-reassurance { color: #75808d; }
+.quill-home .hero-reassurance i { background: #c6ccd4; }
+.quill-home .session-window {
+  border-color: #e2e6eb;
+  background: #fff;
+  box-shadow: 0 28px 70px rgba(34, 43, 56, .12), 0 0 50px rgba(245, 130, 32, .035);
+  transform: none;
+}
+.quill-home .window-topbar,
+.quill-home .window-sidebar,
+.quill-home .window-bottom { border-color: #e9edf1; background: #f8f9fb; }
+.quill-home .window-title,
+.quill-home .window-side-link.selected,
+.quill-home .agent-line strong { color: #29303a; }
+.quill-home .window-live,
+.quill-home .window-side-link,
+.quill-home .agent-line p { color: #6c7581; }
+.quill-home .window-side-label,
+.quill-home .chat-date { color: #89929d; }
+.quill-home .window-side-link.selected { background: #edf0f4; }
+.quill-home .window-side-link svg,
+.quill-home .window-bottom svg { color: #707b88; }
+.quill-home .user-bubble { border-color: #e7ebef; color: #313944; background: #f1f3f6; }
+.quill-home .work-card { border-color: #e4e8ed; background: #fafbfc; }
+.quill-home .work-card-head { border-color: #e8ebef; color: #5f6976; }
+.quill-home .work-card-head code { color: #a55310; }
+.quill-home .code-lines { color: #596472; }
+.quill-home .code-lines b { color: #9aa3ae; }
+.quill-home .code-lines .added { color: #178052; }
+.quill-home .window-composer { border-color: #e4e8ed; color: #87909b; background: #fff; }
+.quill-home .floating-status {
+  border-color: #e2e6eb;
+  color: #29303a;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(34, 43, 56, .12);
+}
+.quill-home .floating-status small { color: #75808d; }
+.quill-home .home-proof { color: #87909b; }
+.quill-home .proof-rule { background: linear-gradient(90deg, transparent, #dfe4e9); }
+.quill-home .workflow-step,
+.quill-home .feature-grid article,
+.quill-home .usecase-card {
+  border-color: #e7ebef;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(27, 39, 53, .035);
+}
+.quill-home .step-number { color: #a0a8b2; }
+.quill-home .workflow-step p,
+.quill-home .feature-grid p,
+.quill-home .usecase-card p { color: #687381; }
+.quill-home .workflow-step h3,
+.quill-home .feature-grid h3,
+.quill-home .usecase-card h3 { color: #28303a; }
+.quill-home .step-link { color: #56616e; }
+.quill-home .home-features {
+  border-top-color: #e9edf1;
+  background: linear-gradient(180deg, #f7f8fa, transparent);
+}
+.quill-home .features-heading h2 span { color: #596472; }
+.quill-home .usecase-example { border-color: #e8ebef; background: #f8f9fb; }
+.quill-home .example-user { color: #4d5865; background: #fff; }
+.quill-home .example-answer { color: #626e7b; }
+.quill-home .home-final-cta {
+  border-color: #2a2a2d;
+  background: radial-gradient(ellipse at 0% 50%, rgba(245, 130, 32, .12), transparent 55%), #101010;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .12);
+}
+.quill-home .home-final-cta h2 { color: #f1f1f3; }
+.quill-home .home-footer { border-top-color: #e8ebef; color: #707986; }
+.quill-home .home-footer .home-brand { color: #20242b; }
+.quill-home .faq-list details { border-color: #e5e8ed; color: #313944; background: #fff; }
+.quill-home .faq-list details p { color: #65707d; }
+.quill-home .pricing-card {
+  border-color: #e4e8ed;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(30, 40, 54, .045);
+}
+.quill-home .pricing-card-featured {
+  border-color: #f2b783;
+  box-shadow: 0 12px 30px rgba(217, 105, 14, .1);
+}
+.quill-home .pricing-heading h1,
+.quill-home .pricing-heading h2,
+.quill-home .pricing-plan-name,
+.quill-home .pricing-price { color: #20242b; }
+.quill-home .pricing-period,
+.quill-home .pricing-price-note { color: #77818e; }
+.quill-home .pricing-coming-pill {
+  color: #9b4e11;
+  border-color: #f3d7c1;
+  background: #fff7f0;
+}
+.quill-home .pricing-plan-description,
+.quill-home .pricing-footnote { color: #697482; }
+.quill-home .pricing-divider { background: #e9edf1; }
+.quill-home .pricing-card li { color: #4f5a67; }
+.quill-home .pricing-button { color: #697482; border-color: #e1e5ea; background: #f6f7f9; }
+.quill-home .pricing-button-featured { color: #9b4e11; border-color: #f1c39f; background: #fff6ed; }
+.quill-home .faq-list details summary { color: #29303a; }
+
+/* The shared footer is light only when rendered by the landing page. */
+.quill-home .site-footer { color: #687381; }
+.quill-home .site-footer-main,
+.quill-home .site-footer-bottom { border-color: #e5e8ed; }
+.quill-home .site-brand { color: #20242b; }
+.quill-home .site-footer-brand p,
+.quill-home .site-footer-links a,
+.quill-home .site-footer-social a,
+.quill-home .site-footer-bottom { color: #707986; }
+.quill-home .site-footer-links h2,
+.quill-home .site-footer-social h2 { color: #303844; }
+.quill-home .site-footer-links a:hover,
+.quill-home .site-footer-social a:hover,
+.quill-home .site-footer-bottom a:hover { color: #c65f0c; }
+
+/* Landing preview follows the signed-in Quill session layout. */
+.quill-home .session-window {
+  overflow: hidden;
+  border-color: #dfe4ea;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 28px 70px rgba(34, 46, 60, .14);
+  transform: none;
+}
+.quill-home .window-body {
+  min-height: 345px;
+  grid-template-columns: minmax(105px, .62fr) minmax(0, 2.1fr) minmax(128px, .78fr);
+  background: #fff;
+}
+.quill-home .window-app-sidebar {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 8px 10px;
+  border-right: 1px solid #e7ebf0;
+  background: #f8f9fb;
+}
+.quill-home .window-app-brand { display: flex; align-items: center; gap: 6px; padding: 0 4px 12px; color: #26303b; font-size: 10px; font-weight: 750; }
+.quill-home .mini-mark { width: 17px; height: 17px; color: #ff891f; }
+.quill-home .window-new-session { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 23px; margin-bottom: 12px; border-radius: 5px; color: #fff; background: #f58220; font-size: 7px; font-weight: 700; }
+.quill-home .window-side-label { padding: 0 5px 7px; color: #7c8794; font-size: 6px; letter-spacing: .09em; }
+.quill-home .window-session-list { display: grid; gap: 4px; }
+.quill-home .window-session-item { min-width: 0; display: flex; align-items: flex-start; gap: 5px; padding: 6px 5px; border-radius: 5px; color: #5e6976; }
+.quill-home .window-session-item.selected { background: #e9edf2; color: #26303b; }
+.quill-home .session-status-dot { width: 6px; height: 6px; flex: none; margin-top: 2px; border-radius: 50%; background: #f2a343; }
+.quill-home .session-status-dot.done { background: #49bd8b; }
+.quill-home .window-session-item strong,
+.quill-home .window-session-item small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quill-home .window-session-item strong { font-size: 6.5px; font-weight: 650; }
+.quill-home .window-session-item small { margin-top: 3px; color: #778391; font-size: 6px; }
+.quill-home .window-settings { display: flex; align-items: center; gap: 5px; margin-top: auto; padding: 8px 4px 0; border-top: 1px solid #e4e8ed; color: #66717e; font-size: 7px; }
+.quill-home .window-main { min-width: 0; display: flex; flex-direction: column; }
+.quill-home .window-session-header { min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 5px; padding: 0 9px; border-bottom: 1px solid #e7ebf0; background: #fff; }
+.quill-home .window-session-heading { min-width: 0; display: flex; align-items: center; gap: 6px; color: #66717e; }
+.quill-home .window-session-heading > span:nth-child(2) { min-width: 0; }
+.quill-home .window-session-heading strong,
+.quill-home .window-session-heading small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quill-home .window-session-heading strong { color: #26303b; font-size: 7px; font-weight: 700; }
+.quill-home .window-session-heading small { margin-top: 2px; color: #788492; font-size: 6px; }
+.quill-home .window-state-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 5px; border: 1px solid #dfeee7; border-radius: 999px; color: #37805f; background: #f1faf5; font-size: 6px; white-space: nowrap; }
+.quill-home .window-state-pill i { width: 5px; height: 5px; border-radius: 50%; background: #45bd88; }
+.quill-home .window-review-action { display: inline-flex; align-items: center; gap: 3px; color: #697482; font-size: 6px; white-space: nowrap; }
+.quill-home .window-chat { min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; padding: 12px 12px 10px; background: #fff; }
+.quill-home .chat-date { margin-bottom: 11px; color: #8a95a2; font-size: 6px; }
+.quill-home .user-bubble { margin-bottom: 12px; border-color: #e3e8ee; border-radius: 7px 7px 2px 7px; color: #36414d; background: #f2f4f7; font-size: 7px; }
+.quill-home .agent-line { gap: 7px; margin-bottom: 9px; }
+.quill-home .agent-avatar { width: 19px; height: 19px; border-color: #f4c89f; color: #e97717; background: #fff6ee; }
+.quill-home .agent-line strong { color: #303a46; font-size: 7px; }
+.quill-home .agent-line p { color: #687482; font-size: 7px; }
+.quill-home .work-card { margin: 0 0 10px 26px; border-color: #e1e6ec; border-radius: 6px; background: #fbfcfd; }
+.quill-home .work-card-head { padding: 7px 8px; border-color: #e7ebf0; color: #6d7885; font-size: 6px; }
+.quill-home .work-card-head code { color: #b45918; font-size: 6px; }
+.quill-home .code-lines { gap: 4px; padding: 8px; color: #586574; font-size: 6px; }
+.quill-home .code-lines b { color: #9aa4af; }
+.quill-home .code-lines .added { color: #168152; }
+.quill-home .final-agent { margin-bottom: 8px; }
+.quill-home .agent-avatar.done { color: #26976a; border-color: #c9eddd; background: #effaf5; }
+.quill-home .window-composer { min-height: 52px; flex: none; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; padding: 6px 7px 5px 9px; border-color: #e0e5eb; color: #929daa; font-size: 6px; }
+.quill-home .composer-placeholder { padding-top: 1px; color: #85858b; font-size: 7px; }
+.quill-home .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.quill-home .composer-footer small { color: #77777e; font-size: 5.5px; }
+.quill-home .composer-send { width: 18px; height: 18px; display: grid; flex: none; place-items: center; border-radius: 50%; color: #171719; background: #929296; }
+.quill-home .window-activity { margin: 1px 0 5px; padding: 6px 7px; border: 1px solid #2c2c30; border-radius: 6px; color: #aaaab0; background: #151515; font-size: 6px; }
+.quill-home .window-tools { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 16px 8px 10px; border-left: 1px solid #e7ebf0; background: #fff; }
+.quill-home .window-tools-title { margin: 0 4px 5px; color: #7d8895; font-size: 6px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.quill-home .window-tool-link { min-width: 0; display: flex; align-items: flex-start; gap: 6px; padding: 5px 4px; border-radius: 5px; color: #7b8794; }
+.quill-home .window-tool-link > span { min-width: 0; }
+.quill-home .window-tool-link strong,
+.quill-home .window-tool-link small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quill-home .window-tool-link strong { color: #34404d; font-size: 6.5px; font-weight: 650; }
+.quill-home .window-tool-link small { margin-top: 2px; color: #8994a0; font-size: 5.5px; }
+.quill-home .window-tool-count { margin-left: auto; padding: 2px 4px; border-radius: 4px; color: #a85d20; background: #fff1e5; font-size: 6px; font-style: normal; }
+@media (max-width: 1000px) {
+  .quill-home .window-body { grid-template-columns: minmax(95px, .6fr) minmax(0, 2fr) minmax(112px, .72fr); }
+}
+@media (max-width: 720px) {
+  .quill-home .window-body { min-height: 330px; grid-template-columns: minmax(95px, .62fr) minmax(0, 2fr) minmax(112px, .72fr); }
+  .quill-home .window-chat { padding: 12px 9px 9px; }
+}
+@media (max-width: 430px) {
+  .quill-home .window-body { min-height: 300px; grid-template-columns: 78px minmax(0, 1fr); }
+  .quill-home .window-tools { display: none; }
+  .quill-home .window-app-sidebar { padding-inline: 6px; }
+  .quill-home .window-session-heading { gap: 4px; }
+  .quill-home .window-state-pill { gap: 3px; padding: 2px 4px; font-size: 5.5px; }
+}
+
+/* The preview shows the current dark session UI within the light landing page. */
+.quill-home .session-window { border-color: #2a2a2d; background: #101010; }
+.quill-home .window-body,
+.quill-home .window-main,
+.quill-home .window-chat,
+.quill-home .window-session-header,
+.quill-home .window-tools { background: #101010; }
+.quill-home .window-app-sidebar { border-color: #252528; background: #121212; }
+.quill-home .window-app-brand,
+.quill-home .window-session-heading strong,
+.quill-home .window-tool-link strong { color: #f1f1f3; }
+.quill-home .window-new-session { color: #17110a; background: #ff8a1f; }
+.quill-home .window-side-label,
+.quill-home .window-tools-title,
+.quill-home .window-session-heading small,
+.quill-home .window-tool-link small { color: #85858b; }
+.quill-home .window-session-item { color: #b7b7bc; }
+.quill-home .window-session-item.selected { color: #f1f1f3; background: #1d1d20; }
+.quill-home .window-session-item small,
+.quill-home .window-settings { color: #99999f; }
+.quill-home .window-settings,
+.quill-home .window-session-header,
+.quill-home .window-tools { border-color: #252528; }
+.quill-home .window-session-heading,
+.quill-home .window-review-action,
+.quill-home .window-tool-link { color: #aaaab0; }
+.quill-home .window-state-pill { border-color: rgba(75, 209, 156, .2); color: #9de3c3; background: rgba(75, 209, 156, .08); }
+.quill-home .user-bubble { border-color: #2c2c30; color: #f1f1f3; background: #202020; }
+.quill-home .agent-line strong { color: #f1f1f3; }
+.quill-home .agent-line p { color: #b7b7bd; }
+.quill-home .work-card { border-color: #2a2a2d; background: #151515; }
+.quill-home .work-card-head { border-color: #28282b; color: #b7b7bc; }
+.quill-home .work-card-head code { color: #f0b981; }
+.quill-home .code-lines { color: #c1c1c5; }
+.quill-home .code-lines b { color: #77777e; }
+.quill-home .code-lines .added { color: #8fd5ae; }
+.quill-home .window-composer { border-color: #303034; color: #85858b; background: #141416; }
+.quill-home .composer-placeholder { color: #85858b; }
+.quill-home .composer-footer small { color: #77777e; }
+.quill-home .composer-send { color: #171719; background: #929296; }
+.quill-home .window-activity { border-color: #303034; color: #96969d; background: #151515; }
+.quill-home .window-tool-count { color: #f3b574; background: rgba(255, 137, 31, .15); }

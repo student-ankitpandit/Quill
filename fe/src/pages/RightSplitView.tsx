@@ -467,7 +467,10 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
           <div className="flex min-w-0 items-center gap-3">
             <button aria-label="Back to dashboard" onClick={() => navigate({ page: "dashboard" })} className="rounded-lg p-2 text-neutral-400 hover:bg-white/10 hover:text-white"><ArrowLeft size={18} /></button>
             <div className="min-w-0"><h1 className="truncate text-sm font-semibold">{session.title || "New session"}</h1><p className="mt-1 truncate text-xs text-neutral-500">{session.repoFullName}</p></div>
-            <span className="hidden rounded-full border border-white/10 px-2.5 py-1 text-xs text-neutral-300 sm:inline-flex">{statusLabel[status]}</span>
+            <span className="hidden items-center gap-2 rounded-full border border-white/10 px-2.5 py-1 text-xs text-neutral-300 sm:inline-flex">
+              {status === "done" && <i aria-hidden="true" className="size-1.5 rounded-full bg-emerald-400" />}
+              {statusLabel[status]}
+            </span>
             {loading && <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-neutral-400"><LoaderCircle size={13} className="animate-spin text-orange-400" /> Switching…</span>}
           </div>
           <div className="flex shrink-0 items-center gap-2">

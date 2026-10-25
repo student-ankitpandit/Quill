@@ -1,28 +1,61 @@
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowRight,
+  ArrowUp,
   ArrowUpRight,
+  Activity,
   Check,
   Code2,
-  Feather,
+  Files,
   GitBranch,
   Github,
-  Globe2,
   Layers3,
+  MessageCircle,
+  Plus,
   Play,
+  Settings2,
   Sparkles,
   Terminal,
   MessageSquareText,
   Bug,
   WandSparkles,
 } from "lucide-react";
+import { useEffect } from "react";
 import { navigate } from "@/lib/router";
 import { getLoginUrl, isLoggedIn } from "@/lib/api";
 import { SiteFooter } from "@/components/Footer";
+import { QuillMark } from "@/components/QuillMark";
 import "./LandingPage.css";
 import "./PricingPage.css";
 
 export function LandingPage() {
+  useEffect(() => {
+    const revealTargets = document.querySelectorAll<HTMLElement>(
+      ".quill-home [data-scroll-reveal]",
+    );
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
+      revealTargets.forEach((target) => target.classList.add("is-visible"));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -24px 0px" },
+    );
+
+    revealTargets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, []);
+
   const enterQuill = () => {
     if (isLoggedIn()) navigate({ page: "dashboard" });
     else window.location.href = getLoginUrl();
@@ -33,23 +66,19 @@ export function LandingPage() {
       <div className="home-orb home-orb-a" aria-hidden="true" />
       <div className="home-orb home-orb-b" aria-hidden="true" />
       <nav className="home-nav">
-        <a className="home-brand" href="/" aria-label="Quill home">
+        <a className="home-brand" href="/" aria-label="quill home">
           <span className="home-brand-mark">
-            <Feather size={19} strokeWidth={2.2} />
+            <QuillMark size={19} />
           </span>
-          <span>
-            Quill<span className="brand-period">.</span>
-          </span>
+          <span>quill</span>
         </a>
         <div className="home-nav-links">
           <a href="#workflow">How it works</a>
           <a href="#features">Features</a>
           <a href="#faq">FAQ</a>
+          <a href="#pricing">Pricing</a>
         </div>
         <div className="home-nav-actions">
-          <a className="home-signin" href="#pricing">
-            Pricing
-          </a>
           <button className="home-signin" onClick={enterQuill}>
             {isLoggedIn() ? "Open dashboard" : "Sign in"}
           </button>
@@ -60,7 +89,7 @@ export function LandingPage() {
       </nav>
 
       <section className="home-hero">
-        <div className="hero-copy">
+        <div className="hero-copy" data-scroll-reveal>
           <div className="hero-badge">
             <span className="badge-spark">
               <Sparkles size={13} />
@@ -94,131 +123,129 @@ export function LandingPage() {
 
         <div
           className="hero-visual"
+          data-scroll-reveal
+          data-reveal-delay="1"
           aria-label="Preview of a Quill coding session"
         >
           <div className="preview-glow" />
           <div className="session-window">
-            <div className="window-topbar">
-              <div className="window-dots">
-                <i />
-                <i />
-                <i />
-              </div>
-              <div className="window-title">
-                <span className="mini-mark">
-                  <Feather size={11} />
-                </span>{" "}
-                Quill <span className="window-slash">/</span> fix-cache-expiry
-              </div>
-              <span className="window-live">
-                <i /> Live
-              </span>
-            </div>
             <div className="window-body">
-              <aside className="window-sidebar">
-                <div className="window-side-label">WORKSPACE</div>
-                <div className="window-side-link selected">
-                  <Code2 size={14} /> Session
+              <aside className="window-app-sidebar">
+                <div className="window-app-brand">
+                  <span className="mini-mark">
+                    <QuillMark size={11} />
+                  </span>
+                  quill
                 </div>
-                <div className="window-side-link">
-                  <Terminal size={14} /> Terminal
+                <div className="window-new-session">
+                  <Plus size={12} /> New session
                 </div>
-                <div className="window-side-link">
-                  <GitBranch size={14} /> Changes{" "}
-                  <span className="change-count">2</span>
+                <div className="window-side-label">SESSIONS</div>
+                <div className="window-session-list">
+                  <div className="window-session-item selected">
+                    <i className="session-status-dot" />
+                    <span>
+                      <strong>hi</strong>
+                      <small>student-ankitpandit/bmo-redis</small>
+                    </span>
+                  </div>
+                  <div className="window-session-item">
+                    <i className="session-status-dot done" />
+                    <span>
+                      <strong>Create a README.md file</strong>
+                      <small>student-ankitpandit/bmo-redis</small>
+                    </span>
+                  </div>
+                  <div className="window-session-item">
+                    <i className="session-status-dot" />
+                    <span>
+                      <strong>Fix repository logic</strong>
+                      <small>student-ankitpandit/bmo-redis</small>
+                    </span>
+                  </div>
+                </div>
+                <div className="window-settings">
+                  <Settings2 size={12} /> Settings
                 </div>
               </aside>
-              <div className="window-chat">
-                <div className="chat-date">TODAY · 10:42 AM</div>
-                <div className="user-bubble">
-                  Fix the cache expiry bug in the Redis client.
-                </div>
-                <div className="agent-line">
-                  <span className="agent-avatar">
-                    <Sparkles size={12} />
-                  </span>
-                  <div>
-                    <strong>Quill</strong>
-                    <p>
-                      I’ll trace the cache lifecycle and add a regression test
-                      for the expiry behavior.
-                    </p>
-                  </div>
-                </div>
-                <div className="work-card">
-                  <div className="work-card-head">
-                    <span className="work-pulse" /> Working in{" "}
-                    <code>cache/client.go</code>
-                  </div>
-                  <div className="code-lines">
+              <div className="window-main">
+                <header className="window-session-header">
+                  <div className="window-session-heading">
+                    <ArrowLeft size={13} />
                     <span>
-                      <b>34</b>
-                      {
-                        " func (c *Client) SetWithTTL(key string, value []byte, ttl time.Duration) {"
-                      }
+                      <strong>hi</strong>
+                      <small>student-ankitpandit/bmo-redis</small>
                     </span>
-                    <span>
-                      <b>35</b> expiresAt := time.Now().Add(ttl)
-                    </span>
-                    <span className="added">
-                      <b>36</b>+ return c.store.Set(key, value, expiresAt)
-                    </span>
-                    <span>
-                      <b>37</b> {"}"}
-                    </span>
+                    <span className="window-state-pill"><i /> Done</span>
                   </div>
-                </div>
-                <div className="agent-line final-agent">
-                  <span className="agent-avatar done">
-                    <Check size={12} />
-                  </span>
-                  <p>
-                    Expiry handling is fixed and the regression test passes.
-                  </p>
-                </div>
-                <div className="window-composer">
-                  <span>Ask Quill a follow-up…</span>
-                  <span className="composer-send">
-                    <ArrowRight size={13} />
-                  </span>
+                </header>
+                <div className="window-chat">
+                  <div className="user-bubble">
+                    hi
+                  </div>
+                  <div className="agent-line">
+                    <span className="agent-avatar">
+                      <Sparkles size={12} />
+                    </span>
+                    <div>
+                      <strong>quill</strong>
+                      <p>
+                        Hi! How can I help you today? Are you working on the
+                        bmo-redis repo or do you have another question in mind?
+                      </p>
+                    </div>
+                  </div>
+                  <div className="agent-line final-agent">
+                    <span className="agent-avatar done">
+                      <Check size={12} />
+                    </span>
+                    <p>No new GitHub commit was created or pushed. The workspace has no changes ahead of main.</p>
+                  </div>
+                  <div className="window-activity">Activity log · 10s span · 2 items</div>
+                  <div className="window-composer">
+                    <span className="composer-placeholder">Ask Quill a question or describe a change</span>
+                    <div className="composer-footer">
+                      <small>Enter to send · Shift+Enter for a new line</small>
+                      <span className="composer-send"><ArrowUp size={13} /></span>
+                    </div>
+                  </div>
                 </div>
               </div>
+              <aside className="window-tools">
+                <div className="window-tool-link">
+                  <Files size={13} />
+                  <span><strong>Files</strong><small>Browse the session workspace</small></span>
+                </div>
+                <div className="window-tool-link">
+                  <GitBranch size={13} />
+                  <span><strong>Changes</strong><small>See the agent’s file edits</small></span>
+                </div>
+                <div className="window-tool-link">
+                  <Terminal size={13} />
+                  <span><strong>Terminal</strong><small>Commands and output</small></span>
+                </div>
+                <div className="window-tool-link">
+                  <MessageCircle size={13} />
+                  <span><strong>Side chat</strong><small>Ask a follow-up question</small></span>
+                </div>
+                <div className="window-tool-link">
+                  <Activity size={13} />
+                  <span><strong>Progress</strong><small>Understand the agent’s work</small></span>
+                </div>
+              </aside>
             </div>
-            <div className="window-bottom">
-              <span>
-                <span className="green-dot" /> Sandbox ready
-              </span>
-              <span>
-                <Globe2 size={12} /> Preview
-              </span>
-              <span>
-                <GitBranch size={12} /> fix/cache-expiry
-              </span>
-            </div>
-          </div>
-          <div className="floating-status">
-            <span className="floating-check">
-              <Check size={14} />
-            </span>
-            <span>
-              <strong>Tests passed</strong>
-              <small>All checks are green</small>
-            </span>
-            <span className="status-spark">
-              <Sparkles size={15} />
-            </span>
           </div>
         </div>
       </section>
 
-      <section className="home-proof">
+      <section className="home-proof" data-scroll-reveal>
         <div className="proof-rule" />
         <p>ONE CLEAR WORKSPACE FROM TASK TO REVIEW</p>
         <div className="proof-rule" />
       </section>
 
       <section className="home-workflow" id="workflow">
-        <div className="section-intro">
+        <div className="section-intro" data-scroll-reveal>
           <span className="section-kicker">A better way to build</span>
           <h2>
             From “what if” to
@@ -230,7 +257,7 @@ export function LandingPage() {
           </p>
         </div>
         <div className="workflow-steps">
-          <article className="workflow-step">
+          <article className="workflow-step" data-scroll-reveal data-reveal-delay="1">
             <div className="step-number">01</div>
             <div className="step-icon">
               <GitBranch size={19} />
@@ -244,7 +271,7 @@ export function LandingPage() {
               Your code, safely checked out <Check size={14} />
             </span>
           </article>
-          <article className="workflow-step">
+          <article className="workflow-step" data-scroll-reveal data-reveal-delay="2">
             <div className="step-number">02</div>
             <div className="step-icon">
               <Sparkles size={19} />
@@ -258,7 +285,7 @@ export function LandingPage() {
               You stay in control <Check size={14} />
             </span>
           </article>
-          <article className="workflow-step">
+          <article className="workflow-step" data-scroll-reveal data-reveal-delay="3">
             <div className="step-number">03</div>
             <div className="step-icon">
               <Layers3 size={19} />
@@ -276,7 +303,7 @@ export function LandingPage() {
       </section>
 
       <section className="home-usecases">
-        <div className="usecases-heading">
+        <div className="usecases-heading" data-scroll-reveal>
           <span className="section-kicker">Start wherever you are</span>
           <h2>
             Sometimes you need an answer.
@@ -289,7 +316,7 @@ export function LandingPage() {
           </p>
         </div>
         <div className="usecase-grid">
-          <article className="usecase-card">
+          <article className="usecase-card" data-scroll-reveal data-reveal-delay="1">
             <span className="usecase-icon">
               <MessageSquareText size={20} />
             </span>
@@ -309,7 +336,7 @@ export function LandingPage() {
               </span>
             </div>
           </article>
-          <article className="usecase-card">
+          <article className="usecase-card" data-scroll-reveal data-reveal-delay="2">
             <span className="usecase-icon">
               <Bug size={20} />
             </span>
@@ -328,7 +355,7 @@ export function LandingPage() {
               </span>
             </div>
           </article>
-          <article className="usecase-card">
+          <article className="usecase-card" data-scroll-reveal data-reveal-delay="3">
             <span className="usecase-icon">
               <WandSparkles size={20} />
             </span>
@@ -349,7 +376,7 @@ export function LandingPage() {
       </section>
 
       <section className="home-features" id="features">
-        <div className="features-heading">
+        <div className="features-heading" data-scroll-reveal>
           <span className="section-kicker">Made for your flow</span>
           <h2>
             A capable agent.
@@ -362,7 +389,7 @@ export function LandingPage() {
           </p>
         </div>
         <div className="feature-grid">
-          <article>
+          <article data-scroll-reveal data-reveal-delay="1">
             <div className="feature-icon">
               <Code2 size={18} />
             </div>
@@ -372,7 +399,7 @@ export function LandingPage() {
               answers and edits relate to your actual code.
             </p>
           </article>
-          <article>
+          <article data-scroll-reveal data-reveal-delay="2">
             <div className="feature-icon">
               <Terminal size={18} />
             </div>
@@ -382,7 +409,7 @@ export function LandingPage() {
               terminal and app preview alongside the conversation.
             </p>
           </article>
-          <article>
+          <article data-scroll-reveal data-reveal-delay="3">
             <div className="feature-icon">
               <GitBranch size={18} />
             </div>
@@ -396,7 +423,7 @@ export function LandingPage() {
       </section>
 
       <section className="pricing-content" id="pricing">
-        <div className="pricing-heading">
+        <div className="pricing-heading" data-scroll-reveal>
           <span className="section-kicker">
             <Sparkles size={13} /> Simple plans, more room to build
           </span>
@@ -414,13 +441,13 @@ export function LandingPage() {
           </div>
         </div>
         <div className="pricing-cards">
-          <article className="pricing-card">
+          <article className="pricing-card" data-scroll-reveal data-reveal-delay="1">
             <div className="pricing-plan-name">Basic</div>
             <p className="pricing-plan-description">
               For everyday repository questions and focused coding tasks.
             </p>
             <div className="pricing-price">
-              <span className="pricing-currency">$</span>9
+              <span className="pricing-currency">₹</span>855
               <span className="pricing-period">/ month</span>
             </div>
             <div className="pricing-price-note">
@@ -449,14 +476,14 @@ export function LandingPage() {
               Coming soon <ArrowRight size={15} />
             </button>
           </article>
-          <article className="pricing-card pricing-card-featured">
+          <article className="pricing-card pricing-card-featured" data-scroll-reveal data-reveal-delay="2">
             <div className="pricing-popular">MORE CAPACITY</div>
             <div className="pricing-plan-name">Pro</div>
             <p className="pricing-plan-description">
               For heavier use, bigger projects, and more demanding work.
             </p>
             <div className="pricing-price">
-              <span className="pricing-currency">$</span>19
+              <span className="pricing-currency">₹</span>1,805
               <span className="pricing-period">/ month</span>
             </div>
             <div className="pricing-price-note">
@@ -497,7 +524,7 @@ export function LandingPage() {
       </section>
 
       <section className="home-faq" id="faq">
-        <div className="faq-intro">
+        <div className="faq-intro" data-scroll-reveal>
           <span className="section-kicker">A few useful details</span>
           <h2>Good to know.</h2>
           <p>
@@ -505,7 +532,7 @@ export function LandingPage() {
             transparent.
           </p>
         </div>
-        <div className="faq-list">
+        <div className="faq-list" data-scroll-reveal data-reveal-delay="1">
           <details>
             <summary>
               Can I ask Quill a question without asking it to change code?
@@ -538,7 +565,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="home-final-cta">
+      <section className="home-final-cta" data-scroll-reveal>
         <div className="final-cta-icon">
           <Play size={17} fill="currentColor" />
         </div>

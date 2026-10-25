@@ -42,8 +42,8 @@
 }
 
 .quill-workspace aside.sidebar .logo {
-  background: #ff8a1f !important;
-  color: #17110a !important;
+  background: transparent !important;
+  color: #ff8a1f !important;
 }
 
 .quill-workspace aside.sidebar > .btn-primary:enabled {
@@ -75,8 +75,8 @@
   height: 28px;
   place-items: center;
   border-radius: 8px;
-  background: #ff8a1f;
-  color: #17110a;
+  background: transparent;
+  color: #ff8a1f;
   font-size: 17px;
 }
 

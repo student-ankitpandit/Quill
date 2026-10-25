@@ -94,7 +94,13 @@ export const storage = {
     installationId: string,
     extras: Partial<InstallationData> = {},
   ): Promise<void> {
-  const existing = await prisma.gitHubInstallation.findUnique({ where: { installationId } });
+    const existing = await prisma.gitHubInstallation.findUnique({ where: { installationId } });
+    if (existing && existing.userId !== userId) {
+      throw new Error(
+        "This GitHub App installation is already linked to another Quill account. Sign in with the GitHub account that owns the installation, or install Quill under your own account.",
+      );
+    }
+
     const user = await ensureUser(userId, {
       ...extras,
       githubUserId: githubId(userId, extras.githubUserId),

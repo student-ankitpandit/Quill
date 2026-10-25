@@ -1,7 +1,8 @@
 import "../../styles/dashboard.css";
 import type { SessionStatus } from "@/lib/api";
 import { navigate } from "@/lib/router";
-import { Feather, Menu } from "lucide-react";
+import { QuillMark } from "@/components/QuillMark";
+import { Menu } from "lucide-react";
 import type { SessionSummary } from "@/pages/apiPage";
 
 const statusLabels: Record<SessionStatus, string> = {
@@ -42,14 +43,14 @@ export function AppSidebar({
         <button className="iconbtn" onClick={onToggleMenu} aria-label="Toggle menu">
           <Menu size={18} />
         </button>
-        <span className="logo" aria-hidden="true"><Feather size={17} strokeWidth={2.2} /></span>
-        <span className="brand-name">Quill</span>
+        <span className="logo"><QuillMark size={17} /></span>
+        <span className="brand-name">quill</span>
       </header>
 
       <aside className="sidebar" data-open={menuOpen}>
         <div className="brand">
-          <span className="logo" aria-hidden="true"><Feather size={17} strokeWidth={2.2} /></span>
-          <span className="brand-name">Quill</span>
+          <span className="logo"><QuillMark size={17} /></span>
+          <span className="brand-name">quill</span>
         </div>
 
         <button className="btn btn-primary btn-block" onClick={onNewSession}>

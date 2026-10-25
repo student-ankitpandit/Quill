@@ -27,6 +27,10 @@ export function parseHash(): Route {
     const params = new URLSearchParams(hash.split("?")[1] || "");
     return { page: "installation-callback", installationId: params.get("installation_id") || "" };
   }
+  const policyHash = hash.match(/^\/(refund-policy|return-policy|privacy-policy|terms)$/);
+  if (policyHash) {
+    return { page: "policy", policy: policyHash[1] as Extract<Route, { page: "policy" }>["policy"] };
+  }
 
   // GitHub's App Setup URL may point at the frontend root and append query
   // params instead of a hash (e.g. http://localhost:3000?installation_id=123).
@@ -112,8 +116,7 @@ export function navigate(route: Route) {
       syncRoute();
       break;
     case "policy":
-      window.history.pushState(null, "", `/${route.policy}`);
-      syncRoute();
+      window.location.hash = `/${route.policy}`;
       break;
     case "dashboard":
       window.history.pushState(null, "", "/dashboard");

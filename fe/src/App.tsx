@@ -2,7 +2,6 @@ import "./index.css";
 import { useRoute, navigate, clearQueryParams } from "@/lib/router";
 import {
   saveAuth,
-  saveInstallation,
   isLoggedIn,
   getInstallUrl,
   getLoginUrl,
@@ -13,6 +12,8 @@ import { LandingPage } from "./pages/LandingPage";
 import { PolicyPage } from "./pages/PolicyPage";
 import DashboardPage from "@/pages/DashboardPage";
 import { RightSplitViewPage } from "@/pages/RightSplitView";
+import { QuillMark } from "@/components/QuillMark";
+import { Github, ArrowUpRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
 function AuthCallback({ code }: { code: string }) {
@@ -54,6 +55,30 @@ function AuthErrorPage({ reason }: { reason: string }) {
         Return to home
       </button>
     </div>
+  );
+}
+
+function InstallationRequiredPage() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#0d0e0f] px-6 text-[#eff0f1]">
+      <section className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center shadow-2xl shadow-black/30">
+        <div className="mx-auto mb-5 grid h-12 w-12 place-items-center rounded-xl border border-orange-400/25 bg-orange-400/10 text-orange-300">
+          <QuillMark size={22} />
+        </div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-orange-300">One quick setup step</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Connect your GitHub repositories</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-neutral-400">
+          Install the HelloQuill Integration GitHub App, then choose which repositories Quill can access. You’ll return here after installation.
+        </p>
+        <a
+          href={getInstallUrl()}
+          className="mx-auto mt-7 inline-flex items-center gap-2 rounded-lg bg-[#ff891f] px-5 py-3 text-sm font-semibold text-black transition hover:bg-[#ffa34d]"
+        >
+          <Github size={17} /> Install GitHub App <ArrowUpRight size={15} />
+        </a>
+        <p className="mt-4 text-xs text-neutral-500">Quill will only be able to access the repositories you select.</p>
+      </section>
+    </main>
   );
 }
 
@@ -101,8 +126,7 @@ function DashboardGate() {
   }
 
   if (status === "install") {
-    window.location.replace(getInstallUrl());
-    return null;
+    return <InstallationRequiredPage />;
   }
 
   return <DashboardPage />;
@@ -111,11 +135,8 @@ function DashboardGate() {
 function InstallationCallback({ installationId }: { installationId: string }) {
   useEffect(() => {
     clearQueryParams();
-    if (installationId) saveInstallation(installationId);
-    if (isLoggedIn()) {
-      navigate({ page: "dashboard" });
-      return;
-    }
+    // Re-authenticate after installation so the backend can verify this
+    // installation against the user's own GitHub account.
     window.location.href = getLoginUrl(installationId);
   }, [installationId]);
 

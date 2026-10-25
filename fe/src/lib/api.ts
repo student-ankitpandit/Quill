@@ -1,4 +1,25 @@
-export const API_BASE_URL = "https://quill-c05l.onrender.com";
+const PRODUCTION_API_URL = "https://quill-c05l.onrender.com";
+const LOCAL_API_URL = "http://localhost:3001";
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+function getApiBaseUrl(): string {
+  const hostname = typeof window === "undefined" ? "" : window.location.hostname;
+  const isLocal =
+    LOCAL_HOSTNAMES.has(hostname) || hostname.endsWith(".localhost");
+
+  // Localhost always targets the local API, even when a production URL is
+  // present in the developer's environment. Deployed builds may override the
+  // production default for preview/staging deployments.
+  if (isLocal) return LOCAL_API_URL;
+
+  const configuredUrl =
+    typeof process !== "undefined"
+      ? process.env.BUN_PUBLIC_API_URL?.trim()
+      : undefined;
+  return (configuredUrl || PRODUCTION_API_URL).replace(/\/+$/, "");
+}
+
+export const API_BASE_URL = getApiBaseUrl();
 const BACKEND_URL = API_BASE_URL;
 
 export type SessionStatus =

@@ -56,10 +56,36 @@ const publishing = new Set<string>();
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 
-// CORS for frontend
+// CORS for the deployed frontend and local frontend development server.
+const configuredFrontendOrigin = (process.env.FRONTEND_URL || "http://localhost:3000")
+  .trim()
+  .replace(/\/+$/, "");
+const allowedFrontendOrigins = new Set([
+  configuredFrontendOrigin,
+]);
 app.use((req, res, next) => {
-  const origin = process.env.FRONTEND_URL || "http://localhost:3000";
-  res.header("Access-Control-Allow-Origin", origin);
+  const requestOrigin = req.header("Origin");
+  const isLocalDevelopmentOrigin = (() => {
+    if (!requestOrigin) return false;
+    try {
+      const url = new URL(requestOrigin);
+      return url.protocol === "http:" && (
+        url.hostname === "localhost" ||
+        url.hostname.endsWith(".localhost") ||
+        url.hostname === "127.0.0.1" ||
+        url.hostname === "[::1]"
+      );
+    } catch {
+      return false;
+    }
+  })();
+  if (
+    requestOrigin &&
+    (allowedFrontendOrigins.has(requestOrigin) || isLocalDevelopmentOrigin)
+  ) {
+    res.header("Access-Control-Allow-Origin", requestOrigin);
+    res.header("Vary", "Origin");
+  }
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");

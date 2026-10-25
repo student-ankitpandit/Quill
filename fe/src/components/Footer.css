@@ -29,13 +29,12 @@
   height: 27px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 137, 31, .27);
+  border: 0;
   border-radius: 8px;
-  color: #17110b;
-  background: #ff891f;
+  color: #ff891f;
+  background: transparent;
 }
 
-.site-brand-period { color: #ff891f; }
 .site-footer-brand p { margin: 11px 0 0; color: #83888d; font-size: 12px; }
 .site-footer-links, .site-footer-social { display: flex; align-items: flex-start; flex-direction: column; gap: 10px; }
 .site-footer-links h2, .site-footer-social h2 { margin: 2px 0 4px; color: #e5e7e8; font-size: 12px; font-weight: 650; }
@@ -45,6 +44,8 @@
 .site-footer-social a svg:last-child { margin-left: 1px; color: #666c72; }
 .x-social-mark { width: 14px; color: currentColor; font-size: 14px; text-align: center; }
 .site-footer-bottom { display: flex; justify-content: space-between; gap: 20px; padding: 15px 0 22px; border-top: 1px solid rgba(255, 255, 255, .06); color: #73787d; font-size: 11px; }
+.site-footer-bottom a { color: inherit; text-decoration: none; transition: color .16s ease; }
+.site-footer-bottom a:hover { color: #ffad62; }
 
 @media (max-width: 700px) {
   .site-footer { width: calc(100% - 36px); }
