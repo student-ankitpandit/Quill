@@ -197,6 +197,7 @@
 .quill-home .site-footer-main,
 .quill-home .site-footer-bottom { border-color: #e5e8ed; }
 .quill-home .site-brand { color: #20242b; }
+.quill-home .site-footer-watermark { color: rgba(32, 36, 43, .055); }
 .quill-home .site-footer-brand p,
 .quill-home .site-footer-links a,
 .quill-home .site-footer-social a,

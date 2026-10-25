@@ -1,6 +1,9 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { getLoginUrl, isLoggedIn } from "@/lib/api";
+import { QuillMark } from "@/components/QuillMark";
 import { SiteFooter } from "@/components/Footer";
-import "./PolicyPage.css";
+import "./LandingPage.css";
+import "./PolicyPageLight.css";
 
 type PolicyName =
   | "refund-policy"
@@ -17,17 +20,35 @@ const policyTitles: Record<PolicyName, string> = {
 
 export function PolicyPage({ policy }: { policy: PolicyName }) {
   const title = policyTitles[policy];
+  const enterQuill = () => {
+    if (isLoggedIn()) window.location.href = "/dashboard";
+    else window.location.href = getLoginUrl();
+  };
 
   return (
     <main className="policy-page">
-      <header className="policy-topbar">
-        <a href="/" className="policy-back">
-          <ArrowLeft size={15} /> Back to Quill
+      <nav className="home-nav">
+        <a className="home-brand" href="/" aria-label="quill home">
+          <span className="home-brand-mark">
+            <QuillMark size={19} />
+          </span>
+          <span>quill</span>
         </a>
-        <span className="policy-wordmark">
-          Quill<span>.</span>
-        </span>
-      </header>
+        <div className="home-nav-links">
+          <a href="/#workflow">How it works</a>
+          <a href="/#features">Features</a>
+          <a href="/#faq">FAQ</a>
+          <a href="/#pricing">Pricing</a>
+        </div>
+        <div className="home-nav-actions">
+          <button className="home-signin" onClick={enterQuill}>
+            {isLoggedIn() ? "Open dashboard" : "Sign in"}
+          </button>
+          <button className="home-nav-cta" onClick={enterQuill}>
+            Get started <ArrowUpRight size={15} />
+          </button>
+        </div>
+      </nav>
       <article className="policy-content">
         <span className="policy-kicker">QUILL · POLICY</span>
         <h1>{title}</h1>
