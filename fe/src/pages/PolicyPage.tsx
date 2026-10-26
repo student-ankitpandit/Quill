@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import { useEffect } from "react";
 import { getLoginUrl, isLoggedIn } from "@/lib/api";
 import { QuillMark } from "@/components/QuillMark";
 import { SiteFooter } from "@/components/Footer";
@@ -20,6 +21,11 @@ const policyTitles: Record<PolicyName, string> = {
 
 export function PolicyPage({ policy }: { policy: PolicyName }) {
   const title = policyTitles[policy];
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [policy]);
+
   const enterQuill = () => {
     if (isLoggedIn()) window.location.href = "/dashboard";
     else window.location.href = getLoginUrl();
