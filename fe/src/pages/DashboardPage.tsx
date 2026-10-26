@@ -5,32 +5,62 @@ import {
   listSessions,
   type SessionSummary,
 } from "./apiPage";
+import { getInstallationId } from "@/lib/api";
 import NewSession from "./NewSessionPage";
 import Settings from "./SettingsPage";
 import ReviewPage from "./ReviewPage";
 
 type View = "new" | "settings" | "review";
+let sessionSummaryCache: { installationId: string | null; sessions: SessionSummary[] } | null = null;
+
+function sameSessionSummaries(a: SessionSummary[], b: SessionSummary[]) {
+  return a.length === b.length && a.every((session, index) => {
+    const next = b[index];
+    return session.id === next.id && session.title === next.title &&
+      session.repoFullName === next.repoFullName && session.status === next.status &&
+      session.prUrl === next.prUrl && session.prMergedAt === next.prMergedAt &&
+      session.prBaseBranch === next.prBaseBranch;
+  });
+}
 
 export default function Dashboard({ onLogout, initialView = "new" }: { onLogout?: () => void; initialView?: View }) {
+  const installationId = getInstallationId();
   const [view, setView] = useState<View>(initialView);
-  const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
+  const [sessions, setSessions] = useState<SessionSummary[] | null>(() =>
+    sessionSummaryCache?.installationId === installationId ? sessionSummaryCache.sessions : null,
+  );
   const [loadError, setLoadError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      setSessions(await listSessions());
+      const next = await listSessions();
+      sessionSummaryCache = { installationId, sessions: next };
+      setSessions((current) => current && sameSessionSummaries(current, next) ? current : next);
       setLoadError(false);
     } catch {
       setLoadError(true);
       setSessions((prev) => prev ?? []);
     }
-  }, []);
+  }, [installationId]);
+
+  useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 5000);
-    return () => clearInterval(t);
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 20_000);
+    const refreshOnVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", refreshOnVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", refreshOnVisible);
+    };
   }, [refresh]);
 
   const go = (next: View) => {

@@ -75,8 +75,8 @@ function fromPrismaSession(row: any): Session {
     previewStarted: row.previewStarted,
     previewStarting: row.previewStarting,
     deployUrl: row.deployUrl ?? undefined,
-    messages: row.messages.map((message: any) => message.payload as OpenAI.Chat.ChatCompletionMessageParam),
-    logs: row.logs.map((entry: any) => ({
+    messages: (row.messages ?? []).map((message: any) => message.payload as OpenAI.Chat.ChatCompletionMessageParam),
+    logs: (row.logs ?? []).map((entry: any) => ({
       time: entry.time.toISOString(),
       type: String(entry.type).toLowerCase() as LogEntry["type"],
       text: entry.text,
@@ -181,10 +181,6 @@ export async function getSession(sessionId: string): Promise<Session | null> {
 export async function listSessions(installationId: string): Promise<Session[]> {
   const rows = await prisma.session.findMany({
     where: { installationId },
-    include: {
-      messages: { orderBy: { sequence: "asc" } },
-      logs: { orderBy: { sequence: "asc" } },
-    },
     orderBy: { createdAt: "desc" },
   });
   return rows.map(fromPrismaSession);

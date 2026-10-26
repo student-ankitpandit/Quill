@@ -1,5 +1,5 @@
 // Share the same configured backend URL as the rest of the frontend.
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, getInstallationId } from "@/lib/api";
 const API_BASE = API_BASE_URL;
 
 const ROUTES = {
@@ -79,8 +79,25 @@ const post = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.strin
 
 export { getInstallUrl as installUrl } from '@/lib/api';
 
-export const listRepos = () => {
-  return request<Repo[]>(ROUTES.repos);
+let repoCache: { data: Repo[]; fetchedAt: number; installationId: string | null } | null = null;
+let repoRequest: { installationId: string | null; promise: Promise<Repo[]> } | null = null;
+
+export const listRepos = (forceRefresh = false): Promise<Repo[]> => {
+  const installationId = getInstallationId();
+  if (!forceRefresh && repoCache?.installationId === installationId && Date.now() - repoCache.fetchedAt < 30_000) {
+    return Promise.resolve(repoCache.data);
+  }
+  if (!forceRefresh && repoRequest?.installationId === installationId) return repoRequest.promise;
+  const pending = request<Repo[]>(ROUTES.repos).then((repos) => {
+    repoCache = { data: repos, fetchedAt: Date.now(), installationId };
+    return repos;
+  });
+  repoRequest = { installationId, promise: pending };
+  void pending.then(
+    () => { if (repoRequest?.promise === pending) repoRequest = null; },
+    () => { if (repoRequest?.promise === pending) repoRequest = null; },
+  );
+  return pending;
 };
 export const listSessions = () => request<SessionSummary[]>(ROUTES.sessions);
 export const getSession = (id: string) => request<SessionSummary>(ROUTES.session(id));

@@ -6,6 +6,7 @@ import {
   getInstallUrl,
   getLoginUrl,
   exchangeAuthCode,
+  hasInstallation,
   resolveInstallation,
 } from "@/lib/api";
 import { LandingPage } from "./pages/LandingPage";
@@ -82,10 +83,10 @@ function InstallationRequiredPage() {
   );
 }
 
-function DashboardGate() {
+function DashboardGate({ initialView = "new" }: { initialView?: "new" | "settings" | "review" }) {
   const [status, setStatus] = useState<
     "checking" | "ready" | "install" | "login"
-  >("checking");
+  >(() => isLoggedIn() && hasInstallation() ? "ready" : "checking");
 
   useEffect(() => {
     let cancelled = false;
@@ -102,7 +103,9 @@ function DashboardGate() {
         else setStatus("install");
       })
       .catch(() => {
-        if (!cancelled) setStatus("login");
+        // Keep the cached dashboard usable during a temporary backend or
+        // GitHub outage. Authenticated API calls will surface actionable errors.
+        if (!cancelled) setStatus(isLoggedIn() ? "ready" : "login");
       });
 
     return () => {
@@ -129,7 +132,7 @@ function DashboardGate() {
     return <InstallationRequiredPage />;
   }
 
-  return <DashboardPage />;
+  return <DashboardPage initialView={initialView} />;
 }
 
 function InstallationCallback({ installationId }: { installationId: string }) {
@@ -156,19 +159,19 @@ export function App() {
         navigate({ page: "landing" });
         return null;
       }
-      return <DashboardGate />;
+      return <DashboardGate initialView="new" />;
     case "settings":
       if (!isLoggedIn()) {
         navigate({ page: "landing" });
         return null;
       }
-      return <DashboardPage initialView="settings" />;
+      return <DashboardGate initialView="settings" />;
     case "review":
       if (!isLoggedIn()) {
         navigate({ page: "landing" });
         return null;
       }
-      return <DashboardPage initialView="review" />;
+      return <DashboardGate initialView="review" />;
     case "session":
       if (!isLoggedIn()) {
         navigate({ page: "landing" });

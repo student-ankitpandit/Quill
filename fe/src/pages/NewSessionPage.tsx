@@ -63,10 +63,10 @@ export default function NewSession({
   const voiceBaseRef = useRef("");
   const voiceTranscriptRef = useRef("");
 
-  const loadRepos = useCallback(async () => {
+  const loadRepos = useCallback(async (forceRefresh = false) => {
     setError("");
     try {
-      const r = await listRepos();
+      const r = await listRepos(forceRefresh);
       setRepos(r);
       const preferredRepo = r.find((candidate) => {
         const name = candidate.name || candidate.full_name.split("/").pop() || "";
@@ -91,10 +91,10 @@ export default function NewSession({
   }, []);
 
   useEffect(() => {
-    const refreshWhenReturning = () => void loadRepos();
+    const refreshWhenReturning = () => void loadRepos(true);
     const refreshAfterAuthChanges = (event: StorageEvent) => {
       if (event.key === "quill_token" || event.key === "quill_installation_id") {
-        void loadRepos();
+        void loadRepos(true);
       }
     };
 
@@ -216,7 +216,7 @@ export default function NewSession({
         >
           Choose repositories
         </a>
-        <button className="btn btn-quiet" type="button" onClick={loadRepos}>
+        <button className="btn btn-quiet" type="button" onClick={() => void loadRepos(true)}>
           Refresh repositories
         </button>
       </section>
@@ -295,7 +295,7 @@ export default function NewSession({
 
       {error && <p className="error">{error}</p>}
       {error && repos?.length === 0 && (
-        <button className="btn btn-quiet" onClick={loadRepos} disabled={busy}>
+        <button className="btn btn-quiet" onClick={() => void loadRepos(true)} disabled={busy}>
           Retry loading repositories
         </button>
       )}
