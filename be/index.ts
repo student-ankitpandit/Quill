@@ -462,8 +462,8 @@ app.post("/create-order", authMiddleware, async (req, res) => {
     }
     const plan = req.body?.plan;
     const planDetails = {
-      basic: { amount: 100, name: "Basic Subscription (30 Days)", subscriptionPlan: "BASIC" as const },
-      pro: { amount: 200, name: "Pro Subscription (30 Days)", subscriptionPlan: "PRO" as const },
+      basic: { amount: 79_900, name: "Basic Subscription (30 Days)", subscriptionPlan: "BASIC" as const },
+      pro: { amount: 159_900, name: "Pro Subscription (30 Days)", subscriptionPlan: "PRO" as const },
     }[plan as "basic" | "pro"];
     if (!planDetails) {
       return res.status(400).json({ success: false, error: "Invalid plan" });

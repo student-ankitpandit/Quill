@@ -465,7 +465,7 @@ export function LandingPage() {
               For everyday repository questions and focused coding tasks.
             </p>
             <div className="pricing-price">
-                <span className="pricing-currency">₹</span>1
+                <span className="pricing-currency">₹</span>799
               <span className="pricing-period">/ 30 days</span>
             </div>
             <div className="pricing-price-note">
@@ -516,7 +516,7 @@ export function LandingPage() {
               For heavier use, bigger projects, and more demanding work.
             </p>
             <div className="pricing-price">
-              <span className="pricing-currency">₹</span>2
+              <span className="pricing-currency">₹</span>1,599
               <span className="pricing-period">/ 30 days</span>
             </div>
             <div className="pricing-price-note">
