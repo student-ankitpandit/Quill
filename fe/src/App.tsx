@@ -163,6 +163,12 @@ export function App() {
         return null;
       }
       return <DashboardPage initialView="settings" />;
+    case "review":
+      if (!isLoggedIn()) {
+        navigate({ page: "landing" });
+        return null;
+      }
+      return <DashboardPage initialView="review" />;
     case "session":
       if (!isLoggedIn()) {
         navigate({ page: "landing" });

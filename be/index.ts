@@ -24,9 +24,12 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import {
   answerSideChat,
+  findExposedSecrets,
   isInformationalQuestion,
   publishChanges,
   queueAgentMessage,
+  redactExposedSecrets,
+  reviewPullRequestDiff,
   runAgent,
   stopAgent,
   stopRequests,
@@ -271,6 +274,122 @@ app.get("/api/billing/usage", authMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Could not load plan usage:", error);
     return res.status(500).json({ error: "Could not load plan usage." });
+  }
+});
+
+app.get("/api/billing/history", authMiddleware, async (req, res) => {
+  if (!req.userId) return res.status(401).json({ error: "Sign in to view billing history." });
+  try {
+    const subscriptions = await prisma.subscription.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        plan: true,
+        status: true,
+        priceMinorUnits: true,
+        currency: true,
+        createdAt: true,
+        currentPeriodEnd: true,
+      },
+    });
+    return res.json(subscriptions.map((subscription) => ({
+      ...subscription,
+      plan: subscription.plan.toLocaleLowerCase(),
+      status: subscription.status.toLocaleLowerCase(),
+    })));
+  } catch (error) {
+    console.error("Could not load billing history:", error);
+    return res.status(500).json({ error: "Could not load billing history." });
+  }
+});
+
+app.post("/api/reviews/pull-request", authMiddleware, async (req, res) => {
+  if (!req.installationId) {
+    return res.status(401).json({ error: "Connect the Quill GitHub App before reviewing a pull request." });
+  }
+  const submittedUrl = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+  let owner = "";
+  let repo = "";
+  let pullNumber = 0;
+  try {
+    const url = new URL(submittedUrl);
+    const match = url.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/(?:files|commits|checks))?\/?$/i);
+    if (url.protocol !== "https:" || url.hostname.toLowerCase() !== "github.com" || !match?.[1] || !match[2] || !match[3]) {
+      return res.status(400).json({ error: "Enter a GitHub pull request URL, such as https://github.com/owner/repo/pull/123." });
+    }
+    owner = decodeURIComponent(match[1]);
+    repo = decodeURIComponent(match[2]);
+    pullNumber = Number(match[3]);
+  } catch {
+    return res.status(400).json({ error: "Enter a valid GitHub pull request URL." });
+  }
+
+  try {
+    const octokit = await getInstallationOctokit(req.installationId);
+    const { data: pull } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+    const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
+      owner,
+      repo,
+      pull_number: pullNumber,
+      per_page: 100,
+    });
+    const reviewableFiles = files.filter((file) => typeof file.patch === "string");
+    const omittedFiles = files.filter((file) => typeof file.patch !== "string").map((file) => file.filename);
+    const diff = reviewableFiles
+      .map((file) => `diff --git a/${file.filename} b/${file.filename}\nstatus: ${file.status}\n${file.patch}`)
+      .join("\n");
+    if (!diff.trim()) {
+      return res.status(422).json({ error: "GitHub did not provide a text diff for this pull request, so Quill could not review it." });
+    }
+    if (diff.length > 100_000) {
+      return res.status(413).json({ error: "This pull request is too large for a complete review in one pass. Narrow the change or review it in smaller pull requests." });
+    }
+
+    const secretFindings = findExposedSecrets(diff).map((finding) => {
+      const parts = finding.split(" in ");
+      return {
+        severity: "critical" as const,
+        title: `Possible exposed ${parts[0]}`,
+        file: parts.slice(1).join(" in "),
+        details: "Credential-like content was detected. Quill withholds its value; rotate it if it is real and remove it from the pull request.",
+      };
+    });
+    const review = await reviewPullRequestDiff(redactExposedSecrets(diff));
+    const findings = [...secretFindings, ...review.findings];
+    const verdict = findings.some((finding) => finding.severity === "critical" || finding.severity === "high")
+      ? "needs_attention"
+      : findings.length > 0 || omittedFiles.length > 0
+        ? "review_recommended"
+        : "no_issues_detected";
+    return res.json({
+      pullRequest: {
+        number: pull.number,
+        title: pull.title,
+        url: pull.html_url,
+        state: pull.state,
+        draft: pull.draft,
+        merged: Boolean(pull.merged_at),
+        baseBranch: pull.base.ref,
+        headBranch: pull.head.ref,
+        changedFiles: files.length,
+        additions: pull.additions,
+        deletions: pull.deletions,
+      },
+      verdict,
+      summary: [review.summary, omittedFiles.length ? `These files had no text patch and could not be analyzed: ${omittedFiles.join(", ")}.` : ""].filter(Boolean).join(" "),
+      findings,
+      reviewedFiles: reviewableFiles.map((file) => file.filename),
+      omittedFiles,
+    });
+  } catch (error) {
+    console.error("Could not review pull request:", error);
+    const status = (error as { status?: number })?.status;
+    if (status === 404) {
+      return res.status(404).json({ error: "GitHub could not find this pull request or the installed app cannot access it." });
+    }
+    return res.status(502).json({ error: "Quill could not complete the pull request review. Please try again." });
   }
 });
 

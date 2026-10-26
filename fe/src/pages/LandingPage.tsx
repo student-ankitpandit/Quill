@@ -41,6 +41,12 @@ export function LandingPage() {
   const [paymentError, setPaymentError] = useState("");
 
   useEffect(() => {
+    if (window.location.hash === "#pricing") {
+      requestAnimationFrame(() => {
+        document.getElementById("pricing")?.scrollIntoView({ block: "start" });
+      });
+    }
+
     const revealTargets = document.querySelectorAll<HTMLElement>(
       ".quill-home [data-scroll-reveal]",
     );

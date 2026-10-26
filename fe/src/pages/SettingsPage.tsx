@@ -1,46 +1,180 @@
-import { useMemo, useState } from "react";
-import { ExternalLink, LayoutGrid, Search } from "lucide-react";
-import { clearAuth, getManageInstallUrl, isLoggedIn } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowRight,
+  BarChart3,
+  CreditCard,
+  ExternalLink,
+  Github,
+  LayoutGrid,
+  Search,
+  UserCircle,
+} from "lucide-react";
+import {
+  clearAuth,
+  getBillingHistory,
+  getManageInstallUrl,
+  getPlanUsage,
+  getUserProfile,
+  isLoggedIn,
+  type BillingHistoryItem,
+  type PlanUsage,
+  type QuillProfile,
+} from "@/lib/api";
 import "./SettingsPage.css";
+
+type Section = "Overview" | "Usage" | "Plan & billing" | "Account" | "Connections";
+
+const sections: { name: Section; icon: typeof LayoutGrid; keywords: string }[] = [
+  { name: "Overview", icon: LayoutGrid, keywords: "home summary status" },
+  { name: "Usage", icon: BarChart3, keywords: "quota runs limits activity" },
+  { name: "Plan & billing", icon: CreditCard, keywords: "subscription payment invoice price" },
+  { name: "Account", icon: UserCircle, keywords: "profile name email github" },
+  { name: "Connections", icon: Github, keywords: "github repositories integration" },
+];
 
 function disconnectGithub() {
   clearAuth();
-  // Reload the app after clearing the saved credentials so every route and
-  // component immediately reflects the signed-out state.
   window.location.replace("/");
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value));
+}
+
+function formatMoney(amount: number, currency: string) {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount / 100);
 }
 
 export default function Settings() {
   const [search, setSearch] = useState("");
+  const [section, setSection] = useState<Section>("Overview");
+  const [profile, setProfile] = useState<QuillProfile | null>(null);
+  const [usage, setUsage] = useState<PlanUsage | null>(null);
+  const [billing, setBilling] = useState<BillingHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const githubConnected = isLoggedIn();
-  const showConnections = useMemo(() => "connections github integration".includes(search.trim().toLowerCase()), [search]);
+  const filteredSections = useMemo(() => sections.filter(({ name, keywords }) => `${name} ${keywords}`.toLowerCase().includes(search.trim().toLowerCase())), [search]);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([getUserProfile(), getPlanUsage(), getBillingHistory()]).then(([profileResult, usageResult, billingResult]) => {
+      if (!mounted) return;
+      if (profileResult.status === "fulfilled") setProfile(profileResult.value);
+      if (usageResult.status === "fulfilled") setUsage(usageResult.value);
+      if (billingResult.status === "fulfilled") setBilling(billingResult.value);
+      if ([profileResult, usageResult, billingResult].every((result) => result.status === "rejected")) {
+        setLoadError("Could not load account details. Please try again.");
+      }
+      setLoading(false);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const chooseSection = (next: Section) => setSection(next);
+  const periodEnd = usage?.periodEnd ? formatDate(usage.periodEnd) : null;
+  const usagePercent = usage?.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
+  const planName = usage?.plan ? usage.plan === "basic" ? "Basic" : "Pro" : "No active plan";
+
+  const sectionContent = () => {
+    if (section === "Connections") {
+      return <div className="settings-card">
+        <div className="settings-card-heading">
+          <div className="settings-provider-icon github-mark" aria-hidden="true"><Github size={23} /></div>
+          <div><h2>GitHub</h2><p>Repositories and pull requests</p></div>
+          <span className={`connection-status${githubConnected ? " connected" : ""}`}><i />{githubConnected ? "Connected" : "Not connected"}</span>
+        </div>
+        <div className="settings-card-body">
+          <p>{githubConnected ? "Quill can access the repositories granted to your GitHub App installation." : "Connect your GitHub account to choose repositories and work on them with Quill."}</p>
+          <div className="settings-connection-actions">
+            <a className="btn btn-quiet settings-manage-link" href={getManageInstallUrl()} target="_blank" rel="noreferrer">{githubConnected ? "Manage repository access" : "Connect GitHub"}<ExternalLink size={15} /></a>
+            {githubConnected && <button className="btn btn-quiet settings-disconnect" type="button" onClick={disconnectGithub}>Disconnect GitHub</button>}
+          </div>
+        </div>
+      </div>;
+    }
+
+    if (section === "Overview") {
+      return <>
+        <div className="settings-overview-grid">
+          <article className="settings-summary-card"><span>Current plan</span><strong>{loading ? "Loading…" : planName}</strong><button type="button" onClick={() => chooseSection("Plan & billing")}>View plan <ArrowRight size={14} /></button></article>
+          <article className="settings-summary-card"><span>Agent runs remaining</span><strong>{loading ? "Loading…" : usage?.active ? `${usage.remaining} / ${usage.limit}` : "—"}</strong><button type="button" onClick={() => chooseSection("Usage")}>View usage <ArrowRight size={14} /></button></article>
+          <article className="settings-summary-card"><span>GitHub connection</span><strong className="settings-connection-value"><i className={githubConnected ? "is-connected" : ""} />{githubConnected ? "Connected" : "Not connected"}</strong><button type="button" onClick={() => chooseSection("Connections")}>Manage connection <ArrowRight size={14} /></button></article>
+        </div>
+        <h2 className="settings-section-heading">Account overview</h2>
+        <div className="settings-card settings-card-body settings-overview-account">
+          <div><span className="settings-overview-name">{profile?.name || profile?.login || "Your Quill account"}</span><p>{profile?.email || "Your account and workspace details at a glance."}</p></div>
+          <button type="button" className="btn btn-quiet" onClick={() => chooseSection("Account")}>Manage account <ArrowRight size={14} /></button>
+        </div>
+      </>;
+    }
+
+    if (section === "Usage") {
+      return <>
+        <div className="settings-card settings-usage-card">
+          <div className="settings-card-body">
+            <div className="settings-usage-heading"><div><h2>{usage?.active ? `${planName} plan usage` : "No active plan"}</h2><p>{usage?.active && periodEnd ? `Current period ends ${periodEnd}` : "Choose a plan to start agent runs."}</p></div><strong>{usage?.active ? `${usage.used} / ${usage.limit}` : "—"}</strong></div>
+            {usage?.active && <><div className="settings-usage-track" role="progressbar" aria-label="Agent run usage" aria-valuemin={0} aria-valuemax={usage.limit} aria-valuenow={usage.used}><span style={{ width: `${usagePercent}%` }} /></div><div className="settings-usage-foot"><span>{usage.remaining} runs remaining</span><span>{usagePercent}% used</span></div></>}
+          </div>
+        </div>
+        <p className="settings-helper-copy">Usage counts agent runs during your current 30-day plan period. Follow-up messages within an active run don’t start a separate run.</p>
+        {!usage?.active && <a className="btn btn-quiet settings-primary-link" href="/#pricing">Explore plans <ArrowRight size={15} /></a>}
+        {loadError && <p role="alert" className="profile-error">{loadError}</p>}
+      </>;
+    }
+
+    if (section === "Plan & billing") {
+      return <>
+        <div className="settings-card">
+          <div className="settings-card-heading"><div className="settings-provider-icon"><CreditCard size={20} /></div><div><h2>{planName}</h2><p>{usage?.active ? "Active subscription" : "Subscription and payment details"}</p></div><span className={`settings-plan-status${usage?.active ? " active" : ""}`}>{usage?.active ? "Active" : "No active plan"}</span></div>
+          <div className="settings-card-body settings-billing-summary">
+            {usage?.active ? <><p>Your {planName} plan includes {usage.limit} agent runs for this 30-day period.</p><div className="settings-billing-meta"><span>Period ends</span><strong>{periodEnd}</strong></div><p className="settings-helper-copy">This is a one-time payment plan. Renew manually when you’re ready for another period.</p></> : <><p>You don’t have an active plan yet. Choose a plan to unlock agent runs and repository work.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">View plans <ArrowRight size={15} /></a></>}
+          </div>
+        </div>
+        <h2 className="settings-section-heading">Payment history</h2>
+        <div className="settings-card settings-history-card">
+          {billing.length ? billing.map((item) => <div className="settings-history-row" key={item.id}><div><strong>{item.plan === "pro" ? "Pro" : "Basic"} plan</strong><span>{formatDate(item.createdAt)}</span></div><div className="settings-history-amount"><strong>{formatMoney(item.priceMinorUnits, item.currency)}</strong><span className={`settings-history-status status-${item.status}`}>{item.status.replaceAll("_", " ")}</span></div></div>) : <div className="settings-history-empty">{loading ? "Loading payment history…" : "Payments and subscription updates will appear here."}</div>}
+        </div>
+        {loadError && <p role="alert" className="profile-error">{loadError}</p>}
+      </>;
+    }
+
+    return <>
+      <div className="settings-card profile-card">
+        <div className="settings-profile-heading"><div className="profile-avatar">{profile?.name?.slice(0, 1).toUpperCase() || profile?.login?.slice(0, 1).toUpperCase() || <UserCircle size={20} />}</div><div><h2>{profile?.name || "Your account"}</h2><p>{profile?.login ? `@${profile.login}` : "Signed in with GitHub"}</p></div></div>
+        <div className="settings-account-row"><span>Name</span><strong>{loading ? "Loading…" : profile?.name || "Not provided"}</strong></div>
+        <div className="settings-account-row"><span>GitHub username</span><strong>{loading ? "Loading…" : profile?.login ? `@${profile.login}` : "Unavailable"}</strong></div>
+        <div className="settings-account-row"><span>Email</span><strong>{loading ? "Loading…" : profile?.email || "Not provided by GitHub"}</strong></div>
+      </div>
+      {loadError && <p role="alert" className="profile-error">{loadError}</p>}
+    </>;
+  };
+
+  const description: Record<Section, string> = {
+    Overview: "A quick view of your Quill account and workspace.",
+    Usage: "Track agent runs included in your current plan.",
+    "Plan & billing": "Manage your plan and review payment activity.",
+    Account: "Your profile details from the GitHub account connected to Quill.",
+    Connections: "Manage the services connected to your Quill workspace.",
+  };
 
   return (
     <section className="settings-page">
       <aside className="settings-nav">
         <label className="settings-search"><Search size={16} /><input aria-label="Search settings" placeholder="Search settings..." value={search} onChange={(event) => setSearch(event.target.value)} /><kbd>/</kbd></label>
-        <p className="settings-nav-caption">Connections</p>
+        <p className="settings-nav-caption">Workspace</p>
         <nav aria-label="Settings sections">
-          {showConnections ? <button className="settings-nav-item active" type="button"><LayoutGrid size={17} /><span>Connections</span></button> : <p className="settings-empty-search">No matching settings</p>}
+          {filteredSections.filter((item) => ["Overview", "Usage", "Plan & billing"].includes(item.name)).map(({ name, icon: Icon }) => <button key={name} className={`settings-nav-item${section === name ? " active" : ""}`} type="button" onClick={() => chooseSection(name)}><Icon size={17} /><span>{name}</span></button>)}
+          <p className="settings-nav-caption settings-nav-subcaption">Personal</p>
+          {filteredSections.filter((item) => ["Account", "Connections"].includes(item.name)).map(({ name, icon: Icon }) => <button key={name} className={`settings-nav-item${section === name ? " active" : ""}`} type="button" onClick={() => chooseSection(name)}><Icon size={17} /><span>{name}</span></button>)}
+          {!filteredSections.length && <p className="settings-empty-search">No matching settings</p>}
         </nav>
       </aside>
 
       <div className="settings-content">
-        <header className="settings-heading"><div><h1>Connections</h1><p className="muted">Manage your Quill workspace and account settings.</p></div></header>
-        <div className="settings-card">
-          <div className="settings-card-heading">
-            <div className="settings-provider-icon github-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.56.1.76-.24.76-.54v-2.08c-3.1.67-3.76-1.32-3.76-1.32-.51-1.29-1.24-1.63-1.24-1.63-1.02-.7.08-.69.08-.69 1.13.08 1.73 1.16 1.73 1.16 1 .1.79 2.3 3.16 1.63.1-.73.39-1.23.71-1.51-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.22 1.16-3-.12-.28-.5-1.42.11-2.96 0 0 .95-.3 3.05 1.15a10.6 10.6 0 0 1 5.55 0c2.1-1.45 3.05-1.15 3.05-1.15.61 1.54.23 2.68.11 2.96.72.78 1.16 1.78 1.16 3 0 4.29-2.61 5.24-5.1 5.51.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z" /></svg></div>
-            <div><h2>GitHub</h2><p>Repositories and pull requests</p></div>
-            <span className={`connection-status${githubConnected ? " connected" : ""}`}><i />{githubConnected ? "Connected" : "Not connected"}</span>
-          </div>
-          <div className="settings-card-body">
-            <p>{githubConnected ? "Quill can access the repositories granted to your GitHub App installation." : "Connect your GitHub account to choose repositories and work on them with Quill."}</p>
-            <div className="settings-connection-actions">
-              <a className="btn btn-quiet settings-manage-link" href={getManageInstallUrl()} target="_blank" rel="noreferrer">{githubConnected ? "Manage repository access" : "Connect GitHub"}<ExternalLink size={15} /></a>
-              {githubConnected && <button className="btn btn-quiet settings-disconnect" type="button" onClick={disconnectGithub}>Disconnect GitHub</button>}
-            </div>
-          </div>
-        </div>
+        <header className="settings-heading"><div><h1>{section}</h1><p className="muted">{description[section]}</p></div></header>
+        {sectionContent()}
       </div>
     </section>
   );

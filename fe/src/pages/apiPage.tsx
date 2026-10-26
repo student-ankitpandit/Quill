@@ -31,6 +31,11 @@ export interface SessionSummary {
   status: SessionStatus;
   createdAt: string;
   prUrl?: string;
+  prBaseBranch?: string;
+  prMergedAt?: string;
+  prMergeCommitSha?: string;
+  branch?: string;
+  task?: string;
   logs?: LogEntry[];
 }
 

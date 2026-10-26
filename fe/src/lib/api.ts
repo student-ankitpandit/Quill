@@ -442,6 +442,56 @@ export function getPlanUsage(): Promise<PlanUsage> {
   return request<PlanUsage>("/api/billing/usage");
 }
 
+export type BillingHistoryItem = {
+  id: string;
+  plan: "basic" | "pro";
+  status: string;
+  priceMinorUnits: number;
+  currency: string;
+  createdAt: string;
+  currentPeriodEnd: string | null;
+};
+
+export function getBillingHistory(): Promise<BillingHistoryItem[]> {
+  return request<BillingHistoryItem[]>("/api/billing/history");
+}
+
+export type PullRequestReviewFinding = {
+  severity: "critical" | "high" | "medium" | "low";
+  title: string;
+  file?: string;
+  line?: number;
+  details: string;
+};
+
+export type AgentPullRequestReview = {
+  pullRequest: {
+    number: number;
+    title: string;
+    url: string;
+    state: string;
+    draft: boolean;
+    merged: boolean;
+    baseBranch: string;
+    headBranch: string;
+    changedFiles: number;
+    additions: number;
+    deletions: number;
+  };
+  verdict: "needs_attention" | "review_recommended" | "no_issues_detected";
+  summary: string;
+  findings: PullRequestReviewFinding[];
+  reviewedFiles: string[];
+  omittedFiles: string[];
+};
+
+export function reviewAgentPullRequest(url: string): Promise<AgentPullRequestReview> {
+  return request<AgentPullRequestReview>("/api/reviews/pull-request", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
 export async function getUserProfile(): Promise<QuillProfile> {
   return request<QuillProfile>("/api/auth/profile");
 }

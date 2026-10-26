@@ -4,6 +4,7 @@ type Route =
   | { page: "landing" }
   | { page: "policy"; policy: "refund-policy" | "return-policy" | "privacy-policy" | "terms" }
   | { page: "dashboard" }
+  | { page: "review" }
   | { page: "settings" }
   | { page: "session"; sessionId: string }
   | { page: "auth-callback"; code: string }
@@ -61,6 +62,7 @@ export function parseHash(): Route {
     }
   }
   if (path === "/dashboard/settings") return { page: "settings" };
+  if (path === "/dashboard/review") return { page: "review" };
   if (hash === "/dashboard") return { page: "dashboard" };
 
   // GitHub's Setup URL is configured as the path "/dashboard", so support the
@@ -129,6 +131,10 @@ export function navigate(route: Route) {
       }
       lastNonSettingsRoute = currentRoute;
       window.history.pushState(null, "", "/dashboard/settings");
+      syncRoute();
+      break;
+    case "review":
+      window.history.pushState(null, "", "/dashboard/review");
       syncRoute();
       break;
     case "session":

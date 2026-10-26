@@ -7,8 +7,9 @@ import {
 } from "./apiPage";
 import NewSession from "./NewSessionPage";
 import Settings from "./SettingsPage";
+import ReviewPage from "./ReviewPage";
 
-type View = "new" | "settings";
+type View = "new" | "settings" | "review";
 
 export default function Dashboard({ onLogout, initialView = "new" }: { onLogout?: () => void; initialView?: View }) {
   const [view, setView] = useState<View>(initialView);
@@ -35,7 +36,7 @@ export default function Dashboard({ onLogout, initialView = "new" }: { onLogout?
   const go = (next: View) => {
     setView(next);
     setMenuOpen(false);
-    navigate(next === "settings" ? { page: "settings" } : { page: "dashboard" });
+    navigate(next === "settings" ? { page: "settings" } : next === "review" ? { page: "review" } : { page: "dashboard" });
   };
 
   return (
@@ -44,10 +45,12 @@ export default function Dashboard({ onLogout, initialView = "new" }: { onLogout?
         sessions={sessions}
         loadError={loadError}
         settingsActive={view === "settings"}
+        reviewActive={view === "review"}
         menuOpen={menuOpen}
         onToggleMenu={() => setMenuOpen((open) => !open)}
         onNewSession={() => go("new")}
         onSettings={() => go("settings")}
+        onReview={() => go("review")}
         onLogout={onLogout}
       />
 
@@ -61,6 +64,7 @@ export default function Dashboard({ onLogout, initialView = "new" }: { onLogout?
           />
         )}
         {view === "settings" && <Settings />}
+        {view === "review" && <ReviewPage sessions={sessions} loadError={loadError} />}
       </main>
     </div>
   );

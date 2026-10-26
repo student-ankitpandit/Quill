@@ -2,7 +2,7 @@ import "../../styles/dashboard.css";
 import type { SessionStatus } from "@/lib/api";
 import { navigate } from "@/lib/router";
 import { QuillMark } from "@/components/QuillMark";
-import { Menu } from "lucide-react";
+import { GitPullRequest, Menu, Plus } from "lucide-react";
 import type { SessionSummary } from "@/pages/apiPage";
 
 const statusLabels: Record<SessionStatus, string> = {
@@ -19,10 +19,12 @@ type AppSidebarProps = {
   loadError?: boolean;
   activeSessionId?: string;
   settingsActive?: boolean;
+  reviewActive?: boolean;
   menuOpen?: boolean;
   onToggleMenu?: () => void;
   onNewSession: () => void;
   onSettings: () => void;
+  onReview?: () => void;
   onLogout?: () => void;
 };
 
@@ -31,10 +33,12 @@ export function AppSidebar({
   loadError = false,
   activeSessionId,
   settingsActive = false,
+  reviewActive = false,
   menuOpen = false,
   onToggleMenu,
   onNewSession,
   onSettings,
+  onReview,
   onLogout,
 }: AppSidebarProps) {
   return (
@@ -53,8 +57,18 @@ export function AppSidebar({
           <span className="brand-name">quill</span>
         </div>
 
-        <button className="btn btn-primary btn-block" onClick={onNewSession}>
-          New session
+        <button className="nav-item sidebar-action" onClick={onNewSession}>
+          <Plus size={17} aria-hidden="true" />
+          <span>New session</span>
+        </button>
+
+        <button
+          className="nav-item sidebar-action"
+          aria-current={reviewActive}
+          onClick={onReview ?? (() => navigate({ page: "review" }))}
+        >
+          <GitPullRequest size={17} aria-hidden="true" />
+          <span>Review</span>
         </button>
 
         <nav className="sessions" aria-label="Sessions">
