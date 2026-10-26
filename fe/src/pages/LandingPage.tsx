@@ -21,15 +21,25 @@ import {
   Bug,
   WandSparkles,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { navigate } from "@/lib/router";
-import { getLoginUrl, isLoggedIn } from "@/lib/api";
+import {
+  createRazorpayOrder,
+  getLoginUrl,
+  isLoggedIn,
+  verifyRazorpayPayment,
+} from "@/lib/api";
 import { SiteFooter } from "@/components/Footer";
 import { QuillMark } from "@/components/QuillMark";
+import { RazorpayCheckout } from "@/components/RazorpayCheckout";
 import "./LandingPage.css";
 import "./PricingPage.css";
 
 export function LandingPage() {
+  const [razorpayOrder, setRazorpayOrder] = useState<Awaited<ReturnType<typeof createRazorpayOrder>> | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<"basic" | "pro" | null>(null);
+  const [paymentError, setPaymentError] = useState("");
+
   useEffect(() => {
     const revealTargets = document.querySelectorAll<HTMLElement>(
       ".quill-home [data-scroll-reveal]",
@@ -59,6 +69,21 @@ export function LandingPage() {
   const enterQuill = () => {
     if (isLoggedIn()) navigate({ page: "dashboard" });
     else window.location.href = getLoginUrl();
+  };
+
+  const startPayment = async (plan: "basic" | "pro") => {
+    setPaymentError("");
+    if (!isLoggedIn()) {
+      setPaymentError("Sign in with GitHub before subscribing so we can activate the plan on your account.");
+      return;
+    }
+    setSelectedPlan(plan);
+    try {
+      setRazorpayOrder(await createRazorpayOrder(plan));
+    } catch (error) {
+      setSelectedPlan(null);
+      setPaymentError(error instanceof Error ? error.message : "Unable to start payment.");
+    }
   };
 
   return (
@@ -433,11 +458,11 @@ export function LandingPage() {
             <span>Keep your work moving.</span>
           </h2>
           <p>
-            Pick the plan that fits how you work with Quill. Pricing is being
-            finalized, and subscriptions are not available yet.
+            Pick the plan that fits how you work with Quill and subscribe
+            securely through Razorpay.
           </p>
           <div className="pricing-coming-pill">
-            <span /> Plans and billing are coming soon
+            <span /> Secure payments with Razorpay
           </div>
         </div>
         <div className="pricing-cards">
@@ -447,17 +472,17 @@ export function LandingPage() {
               For everyday repository questions and focused coding tasks.
             </p>
             <div className="pricing-price">
-              <span className="pricing-currency">₹</span>799
-              <span className="pricing-period">/ month</span>
+                <span className="pricing-currency">₹</span>1
+              <span className="pricing-period">/ 30 days</span>
             </div>
             <div className="pricing-price-note">
-              Planned price · final details coming soon
+              One-time payment · renew manually
             </div>
             <div className="pricing-divider" />
             <ul>
               <li>
                 <Check size={15} />
-                Standard usage limits
+                20 agent runs per 30 days
               </li>
               <li>
                 <Check size={15} />
@@ -472,9 +497,24 @@ export function LandingPage() {
                 Reviewable workspace changes
               </li>
             </ul>
-            <button type="button" className="pricing-button" disabled>
-              Coming soon <ArrowRight size={15} />
-            </button>
+            {razorpayOrder && selectedPlan === "basic" ? (
+              <RazorpayCheckout
+                order={razorpayOrder}
+                verifyPayment={verifyRazorpayPayment}
+                onError={(error) => setPaymentError(error.message)}
+                onSuccess={() => {
+                  setRazorpayOrder(null);
+                  setSelectedPlan(null);
+                  navigate({ page: "dashboard" });
+                }}
+                autoOpen
+                className="pricing-button"
+              />
+            ) : (
+              <button type="button" className="pricing-button" onClick={() => startPayment("basic")}>
+                Subscribe <ArrowRight size={15} />
+              </button>
+            )}
           </article>
           <article className="pricing-card pricing-card-featured" data-scroll-reveal data-reveal-delay="2">
             <div className="pricing-popular">MORE CAPACITY</div>
@@ -483,11 +523,11 @@ export function LandingPage() {
               For heavier use, bigger projects, and more demanding work.
             </p>
             <div className="pricing-price">
-              <span className="pricing-currency">₹</span>1,599
-              <span className="pricing-period">/ month</span>
+              <span className="pricing-currency">₹</span>2
+              <span className="pricing-period">/ 30 days</span>
             </div>
             <div className="pricing-price-note">
-              Planned price · final details coming soon
+              One-time payment · renew manually
             </div>
             <div className="pricing-divider" />
             <ul>
@@ -497,21 +537,37 @@ export function LandingPage() {
               </li>
               <li>
                 <Check size={15} />
-                Higher usage limits
+                100 agent runs per 30 days
               </li>
             </ul>
-            <button
-              type="button"
-              className="pricing-button pricing-button-featured"
-              disabled
-            >
-              Coming soon <ArrowRight size={15} />
-            </button>
+            {razorpayOrder && selectedPlan === "pro" ? (
+              <RazorpayCheckout
+                order={razorpayOrder}
+                verifyPayment={verifyRazorpayPayment}
+                onError={(error) => setPaymentError(error.message)}
+                onSuccess={() => {
+                  setRazorpayOrder(null);
+                  setSelectedPlan(null);
+                  navigate({ page: "dashboard" });
+                }}
+                autoOpen
+                className="pricing-button pricing-button-featured"
+              />
+            ) : (
+              <button
+                type="button"
+                className="pricing-button pricing-button-featured"
+                onClick={() => startPayment("pro")}
+              >
+                Subscribe <ArrowRight size={15} />
+              </button>
+            )}
           </article>
         </div>
+        {paymentError && <p role="alert" className="pricing-footnote">{paymentError}</p>}
         <p className="pricing-footnote">
-          The prices and plan details shown are planned offerings. We’ll share
-          final limits and model availability before subscriptions launch.
+          Your payment is processed securely by Razorpay. Quill never receives
+          or stores your card details.
         </p>
       </section>
 

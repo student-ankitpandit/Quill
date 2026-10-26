@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getInstallUrl } from "@/lib/api";
+import { getInstallUrl, getPlanUsage, type PlanUsage } from "@/lib/api";
 import {
   createSession,
   listRepos,
@@ -38,6 +38,7 @@ export default function NewSession({
   const [task, setTask] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [listening, setListening] = useState(false);
   const [voiceSupported] = useState(
     () =>
@@ -84,6 +85,10 @@ export default function NewSession({
   useEffect(() => {
     void loadRepos();
   }, [loadRepos]);
+
+  useEffect(() => {
+    void getPlanUsage().then(setPlanUsage).catch(() => setPlanUsage(null));
+  }, []);
 
   useEffect(() => {
     const refreshWhenReturning = () => void loadRepos();
@@ -177,7 +182,7 @@ export default function NewSession({
     recognition.start();
   }
 
-  const canSubmit = !busy && !!repo && task.trim().length > 0;
+  const canSubmit = !busy && !!repo && task.trim().length > 0 && !!planUsage?.active && planUsage.remaining > 0;
 
   async function submit() {
     if (!canSubmit) return;
@@ -223,6 +228,13 @@ export default function NewSession({
       <h1 className="display">What should Quill work on?</h1>
       <p className="lede">
         Pick a repository, describe the change, and Quill opens a pull request.
+      </p>
+      <p className="plan-usage">
+        {!planUsage
+          ? "Checking your plan…"
+          : !planUsage.active
+            ? <>An active plan is required to start agent runs. <a href="/#pricing">View plans</a>.</>
+            : `${planUsage.plan === "basic" ? "Basic" : "Pro"} plan · ${planUsage.used} of ${planUsage.limit} monthly agent runs used · ${planUsage.remaining} remaining`}
       </p>
 
       <div className="composer">

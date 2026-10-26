@@ -59,6 +59,7 @@ async function takeQueuedMessages(sessionId: string, includePending = false) {
 
 const SYSTEM_PROMPT =
   "You are an agent that can answer questions and make requested code changes. " +
+  "For a brief greeting such as hi or hello, greet the user and ask how you can help with the repository, referring to it by its repository name only. Do not include the GitHub owner's username or the full owner/repository identifier. Keep the reply conversational; do not claim repository work was done or mention commits, pushes, or pull requests. " +
   "For a straightforward informational question, answer it directly in plain language. Do not call tools, inspect or change files, start services, or create a pull request for an informational question. " +
   "For repository-specific questions, use the repository name and conversation context; be clear about uncertainty instead of inventing details you cannot know without inspection. " +
   "Never claim that changes are on GitHub based on a local git commit. Quill publishes and verifies changes after your response; do not run git push yourself. " +
@@ -66,7 +67,19 @@ const SYSTEM_PROMPT =
   "Use repository tools only when the user explicitly asks you to inspect or change the code. " +
   "If a code task is blocked on information you cannot find yourself, use ask_user.";
 
+function isGreeting(text: string): boolean {
+  const normalized = text
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[.!?,]+$/g, "")
+    .replace(/\s+/g, " ");
+  return /^(?:(?:hi|hello|hey)(?:\s+(?:there|again|there again|again there))?|good (?:morning|afternoon|evening)|how are you(?: doing)?|what's up)$/.test(
+    normalized,
+  );
+}
+
 export function isInformationalQuestion(text: string): boolean {
+  if (isGreeting(text)) return true;
   const normalized = text.trim().toLocaleLowerCase();
   const isQuestion =
     /^(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:explain|describe|summari[sz]e|tell\s+me|what|why|how|who|where|when|which|is|are|do|does|did)\b/.test(
@@ -480,6 +493,34 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
           ? latestUserMessage.content
           : "";
       finalTurnIsInformational = isInformationalQuestion(userText);
+
+      if (isGreeting(userText)) {
+        const queuedMessages = await takeQueuedMessages(session.id);
+        if (queuedMessages.length) {
+          session.messages.push(
+            ...queuedMessages.map((queued) => ({
+              role: "user" as const,
+              content: queued.content,
+            })),
+          );
+          await saveSession(
+            session,
+            queuedMessages.map((queued) => queued.id),
+          );
+          continue;
+        }
+
+        const repoName = session.repoFullName.split("/").pop() || "repository";
+        const greeting = `Hi! How can I help with the ${repoName} repository?`;
+        session.messages.push({ role: "assistant", content: greeting });
+        publish(session.id, {
+          type: "message",
+          data: { role: "assistant", content: greeting },
+        });
+        setStatus(session, "done");
+        await saveSession(session);
+        return;
+      }
 
       const agentRun = await startAgentRun(session.id, "openai", MODEL);
       let response: OpenAI.Chat.ChatCompletion;

@@ -180,13 +180,15 @@ enum SubscriptionStatus {
 model Subscription {
   id                     String             @id @default(cuid())
   userId                 String
-  provider               String             @default("stripe")
+  provider               String             @default("razorpay")
+  providerOrderId        String?            @unique
+  providerPaymentId      String?            @unique
   providerCustomerId     String?
   providerSubscriptionId String?            @unique
   plan                   SubscriptionPlan
   status                 SubscriptionStatus @default(INCOMPLETE)
-  priceCents             Int
-  currency               String             @default("usd")
+  priceMinorUnits        Int                @map("priceCents")
+  currency               String             @default("INR")
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   cancelAtPeriodEnd      Boolean            @default(false)

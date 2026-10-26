@@ -20,7 +20,7 @@ import { storage, type InstallationData } from "./storage";
 import { getRepoConfig, saveRepoConfig } from "./repo-config";
 import axios from "axios";
 import Sandbox from "@e2b/code-interpreter";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import {
   answerSideChat,
@@ -47,11 +47,18 @@ import { getTerminalPid, setTerminalPid } from "./terminal-sessions";
 import { migrateLegacyJsonData } from "./legacy-data-migration";
 import { prisma } from "./db";
 import { quoteShell, workspacePath, assertWorkspacePathInside, signUserToken, resolveInstallationId } from "./lib"
+import Razorpay from "razorpay";
+import { getPlanUsage, getUsageLimitError } from "./billing";
 
 const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
 const REPO_DIR = "/home/user/repo";
 const SAFE = /^[\w-]+$/;
 const publishing = new Set<string>();
+
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_API_KEY!,
+    key_secret: process.env.RAZORPAY_API_KEY_SECRET!,
+  });
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
@@ -63,6 +70,7 @@ const configuredFrontendOrigin = (process.env.FRONTEND_URL || "http://localhost:
 const allowedFrontendOrigins = new Set([
   configuredFrontendOrigin,
 ]);
+
 app.use((req, res, next) => {
   const requestOrigin = req.header("Origin");
   const isLocalDevelopmentOrigin = (() => {
@@ -246,6 +254,143 @@ app.get("/api/app/github/install", (req, res) => {
     ? `https://github.com/settings/installations/${encodeURIComponent(installationId)}`
     : "https://github.com/apps/helloquill-ai-integration/installations/new";
   return res.redirect(url);
+});
+
+app.get("/api/payments/config", (_req, res) => {
+  const keyId = process.env.RAZORPAY_API_KEY?.trim();
+  if (!keyId) {
+    return res.status(503).json({ error: "Razorpay is not configured on the backend." });
+  }
+  return res.json({ keyId });
+});
+
+app.get("/api/billing/usage", authMiddleware, async (req, res) => {
+  if (!req.userId) return res.status(401).json({ error: "Sign in to view plan usage." });
+  try {
+    return res.json(await getPlanUsage(req.userId));
+  } catch (error) {
+    console.error("Could not load plan usage:", error);
+    return res.status(500).json({ error: "Could not load plan usage." });
+  }
+});
+
+app.post("/create-order", authMiddleware, async (req, res) => {
+  try {
+    if (!req.userId) return res.status(401).json({ success: false, error: "Sign in before subscribing." });
+    if (!process.env.RAZORPAY_API_KEY?.trim() || !process.env.RAZORPAY_API_KEY_SECRET?.trim()) {
+      return res.status(503).json({ success: false, error: "Razorpay is not configured on the backend." });
+    }
+    const plan = req.body?.plan;
+    const planDetails = {
+      basic: { amount: 100, name: "Basic Subscription (30 Days)", subscriptionPlan: "BASIC" as const },
+      pro: { amount: 200, name: "Pro Subscription (30 Days)", subscriptionPlan: "PRO" as const },
+    }[plan as "basic" | "pro"];
+    if (!planDetails) {
+      return res.status(400).json({ success: false, error: "Invalid plan" });
+    }
+    const order = await razorpay.orders.create({
+      amount: planDetails.amount,
+      currency: "INR",
+      receipt: `quill_${plan}_${Date.now()}`,
+      notes: { product_name: planDetails.name },
+    });
+    await prisma.subscription.create({
+      data: {
+        userId: req.userId,
+        provider: "razorpay",
+        providerOrderId: order.id,
+        plan: planDetails.subscriptionPlan,
+        status: "INCOMPLETE",
+        priceMinorUnits: planDetails.amount,
+        currency: "INR",
+      },
+    });
+    return res.json({ success: true, order });
+  } catch (error) {
+    console.error("Failed to create order:", error);
+    const razorpayError = error as {
+      statusCode?: number;
+      error?: { description?: string; code?: string };
+      message?: string;
+    };
+    const statusCode = razorpayError.statusCode;
+    const description = razorpayError.error?.description;
+    const safeMessage = description || razorpayError.message;
+    return res.status(statusCode && statusCode >= 400 && statusCode < 600 ? statusCode : 502).json({
+      success: false,
+      error: safeMessage || "Razorpay could not create the order.",
+      code: razorpayError.error?.code,
+    });
+  }
+});
+
+app.post("/verify-payment", authMiddleware, async (req, res) => {
+  if (!req.userId) return res.status(401).json({ error: "Sign in to verify this payment." });
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body ?? {};
+  if (
+    typeof razorpay_order_id !== "string" ||
+    typeof razorpay_payment_id !== "string" ||
+    typeof razorpay_signature !== "string"
+  ) {
+    return res.status(400).json({ error: "Invalid payment details" });
+  }
+
+  const expectedSignature = createHmac("sha256", process.env.RAZORPAY_API_KEY_SECRET!)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex");
+  const expected = Buffer.from(expectedSignature);
+  const received = Buffer.from(razorpay_signature);
+  if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
+    return res.status(400).json({ error: "Payment verification failed" });
+  }
+
+  try {
+    const purchase = await prisma.subscription.findFirst({
+      where: { provider: "razorpay", providerOrderId: razorpay_order_id, userId: req.userId },
+    });
+    if (!purchase) return res.status(404).json({ error: "Payment order was not found for this account." });
+
+    const payment = await razorpay.payments.fetch(razorpay_payment_id) as unknown as {
+      order_id?: string;
+      amount?: number;
+      currency?: string;
+      status?: string;
+    };
+    if (
+      payment.order_id !== razorpay_order_id ||
+      payment.amount !== purchase.priceMinorUnits ||
+      payment.currency !== purchase.currency ||
+      payment.status !== "captured"
+    ) {
+      return res.status(400).json({ error: "Razorpay has not confirmed a captured payment for this plan." });
+    }
+
+    if (purchase.status !== "ACTIVE" || purchase.providerPaymentId !== razorpay_payment_id) {
+      const periodStart = new Date();
+      const periodEnd = new Date(periodStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+      await prisma.$transaction(async (tx) => {
+        await tx.subscription.updateMany({
+          where: { userId: req.userId!, status: "ACTIVE", id: { not: purchase.id } },
+          data: { status: "CANCELED" },
+        });
+        await tx.subscription.update({
+          where: { id: purchase.id },
+          data: {
+            status: "ACTIVE",
+            providerPaymentId: razorpay_payment_id,
+            currentPeriodStart: periodStart,
+            currentPeriodEnd: periodEnd,
+            cancelAtPeriodEnd: false,
+          },
+        });
+      });
+    }
+
+    return res.json({ verified: true, usage: await getPlanUsage(req.userId) });
+  } catch (error) {
+    console.error("Razorpay payment verification failed:", error);
+    return res.status(502).json({ error: "Could not confirm the payment with Razorpay. Please retry." });
+  }
 });
 
 // Apply auth middleware to all routes below
@@ -484,6 +629,9 @@ app.post("/api/app/sessions", async (req, res) => {
   const installationId = req.installationId;
   if (!installationId)
     return res.status(401).json({ error: "Not authenticated" });
+  if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
+  const usageLimitError = await getUsageLimitError(req.userId);
+  if (usageLimitError) return res.status(402).json({ error: usageLimitError });
 
   const { repoFullName } = req.body ?? {};
   const rawTask =
@@ -635,6 +783,9 @@ app.post("/api/sessions/:sessionId/run", async (req, res) => {
   if (session.status === "running") {
     return res.status(409).json({ error: "Session is already running" });
   }
+  if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
+  const usageLimitError = await getUsageLimitError(req.userId);
+  if (usageLimitError) return res.status(402).json({ error: usageLimitError });
 
   setStatus(session, "running");
   await saveSession(session);
@@ -1043,6 +1194,9 @@ app.post("/api/app/sessions/:sessionId/side-chat", async (req, res) => {
     return res.status(400).json({ error: "Enter a question first." });
   if (question.length > 10_000)
     return res.status(400).json({ error: "Message is too long." });
+  if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
+  const usageLimitError = await getUsageLimitError(req.userId);
+  if (usageLimitError) return res.status(402).json({ error: usageLimitError });
   try {
     const now = new Date().toISOString();
     await appendSideChat(session.id, [
@@ -1108,6 +1262,10 @@ app.post("/api/sessions/:sessionId/messages", async (req, res) => {
         queued: true,
       });
     }
+
+    if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
+    const usageLimitError = await getUsageLimitError(req.userId);
+    if (usageLimitError) return res.status(402).json({ error: usageLimitError });
 
     if (session.pendingToolCallId) {
       session.messages.push({

@@ -265,6 +265,14 @@ a {
   max-width: 52ch;
 }
 
+.plan-usage {
+  margin: 0 0 18px;
+  color: var(--muted-foreground, #8d9299);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.plan-usage a { color: #f28a2e; text-decoration: underline; text-underline-offset: 2px; }
+
 .composer {
   background: var(--panel);
   border: 1px solid var(--line);

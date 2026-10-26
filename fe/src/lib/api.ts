@@ -22,6 +22,23 @@ function getApiBaseUrl(): string {
 export const API_BASE_URL = getApiBaseUrl();
 const BACKEND_URL = API_BASE_URL;
 
+export type RazorpayOrder = {
+  id: string;
+  amount: number;
+  currency: string;
+};
+
+export type RazorpayPaymentResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+export async function getRazorpayPublicKey(): Promise<string> {
+  const response = await request<{ keyId: string }>("/api/payments/config");
+  return response.keyId;
+}
+
 export type SessionStatus =
   | "ready"
   | "running"
@@ -96,6 +113,25 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return res.json();
+}
+
+export async function createRazorpayOrder(
+  plan: "basic" | "pro",
+): Promise<RazorpayOrder> {
+  const response = await request<{ order: RazorpayOrder }>("/create-order", {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+  return response.order;
+}
+
+export async function verifyRazorpayPayment(
+  payment: RazorpayPaymentResponse,
+): Promise<{ verified: boolean; usage: PlanUsage }> {
+  return request("/verify-payment", {
+    method: "POST",
+    body: JSON.stringify(payment),
+  });
 }
 
 // ── Sessions ──
@@ -392,6 +428,19 @@ export function subscribeToSession(
 // 🔐 Auth helpers
 
 export type QuillProfile = { userId: string; name: string; login: string; email: string };
+
+export type PlanUsage = {
+  active: boolean;
+  plan: "basic" | "pro" | null;
+  limit: number;
+  used: number;
+  remaining: number;
+  periodEnd: string | null;
+};
+
+export function getPlanUsage(): Promise<PlanUsage> {
+  return request<PlanUsage>("/api/billing/usage");
+}
 
 export async function getUserProfile(): Promise<QuillProfile> {
   return request<QuillProfile>("/api/auth/profile");

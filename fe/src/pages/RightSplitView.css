@@ -300,7 +300,6 @@
   flex-direction: column;
   gap: 22px;
   width: 100%;
-  max-width: 900px;
   margin: 0 auto;
   padding: 6px 0 18px;
   overflow-wrap: anywhere;
@@ -354,7 +353,6 @@
 
 .quill-workspace .qw-composer {
   width: 100%;
-  max-width: 900px;
   margin: 0 auto;
   padding: 13px 16px 11px;
   border: 1px solid #303034;

@@ -481,7 +481,7 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
         </header>
 
         <div className="qw-content flex min-h-0 flex-1">
-          <section className="qw-thread mx-auto flex min-w-0 max-w-[960px] flex-1 flex-col">
+          <section className="qw-thread flex min-w-0 flex-1 flex-col">
             <div className="qw-messages min-h-0 flex-1 overflow-y-auto px-5 py-7 sm:px-10">
               <div className="qw-message-list mx-auto flex max-w-[760px] flex-col gap-7">
                 {session.workspaceUnavailable && <div role="status" className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100/80">This session’s sandbox has expired and can’t be resumed. Unpushed changes from that sandbox are unavailable. Start a new session to continue from the repository on GitHub.<button type="button" onClick={() => navigate({ page: "dashboard" })} className="ml-2 font-medium text-orange-300 hover:text-orange-200">New session</button></div>}
@@ -503,7 +503,7 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
               </div>
             </div>
             <div className="qw-composer-wrap shrink-0 px-5 pb-5 sm:px-10">
-              <form onSubmit={(event) => { event.preventDefault(); void handleSend(); }} className={`qw-composer mx-auto max-w-[760px] rounded-2xl border border-white/15 bg-[#191919] p-3 shadow-2xl shadow-black/20 focus-within:border-white/25 ${loading ? "opacity-60" : ""}`}>
+              <form onSubmit={(event) => { event.preventDefault(); void handleSend(); }} className={`qw-composer w-full rounded-2xl border border-white/15 bg-[#191919] p-3 shadow-2xl shadow-black/20 focus-within:border-white/25 ${loading ? "opacity-60" : ""}`}>
                 <textarea ref={composerRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSend(); } }} rows={2} placeholder={loading ? "Switching session…" : "Ask Quill a question or describe a change"} className="max-h-40 min-h-14 w-full resize-y bg-transparent px-2 py-1 text-sm leading-6 text-neutral-100 outline-none placeholder:text-neutral-500" disabled={sending || loading} />
                 <div className="flex items-center justify-between px-1 pt-2"><span className="text-xs text-neutral-600">{loading ? "Loading conversation…" : "Enter to send · Shift+Enter for a new line"}</span><div className="flex items-center gap-2">{status === "running" && <button type="button" onClick={handleStop} disabled={loading} className="qw-stop-button" aria-label="Stop agent" title="Stop agent"><Square size={15} fill="currentColor" strokeWidth={1.5} /></button>}<button type="submit" disabled={loading || !message.trim() || sending} className="qw-send-button" aria-label="Send message" title="Send message">{sending || loading ? <LoaderCircle size={16} className="animate-spin" /> : <ArrowUp size={20} strokeWidth={2} />}</button></div></div>
               </form>
