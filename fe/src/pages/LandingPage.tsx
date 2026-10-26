@@ -106,8 +106,8 @@ export function LandingPage() {
         <div className="home-nav-links">
           <a href="#workflow">How it works</a>
           <a href="#features">Features</a>
-          <a href="#faq">FAQ</a>
           <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
         </div>
         <div className="home-nav-actions">
           <button className="home-signin" onClick={enterQuill}>
@@ -267,12 +267,6 @@ export function LandingPage() {
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="home-proof" data-scroll-reveal>
-        <div className="proof-rule" />
-        <p>ONE CLEAR WORKSPACE FROM TASK TO REVIEW</p>
-        <div className="proof-rule" />
       </section>
 
       <section className="home-workflow" id="workflow">
@@ -463,13 +457,6 @@ export function LandingPage() {
             <br />
             <span>Keep your work moving.</span>
           </h2>
-          <p>
-            Pick the plan that fits how you work with Quill and subscribe
-            securely through Razorpay.
-          </p>
-          <div className="pricing-coming-pill">
-            <span /> Secure payments with Razorpay
-          </div>
         </div>
         <div className="pricing-cards">
           <article className="pricing-card" data-scroll-reveal data-reveal-delay="1">

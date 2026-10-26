@@ -472,6 +472,10 @@ export type AgentPullRequestReview = {
     state: string;
     draft: boolean;
     merged: boolean;
+    author: string;
+    description: string;
+    createdAt: string;
+    commitCount: number;
     baseBranch: string;
     headBranch: string;
     changedFiles: number;
@@ -490,6 +494,14 @@ export function reviewAgentPullRequest(url: string): Promise<AgentPullRequestRev
     method: "POST",
     body: JSON.stringify({ url }),
   });
+}
+
+export async function askAboutPullRequest(url: string, question: string): Promise<string> {
+  const response = await request<{ answer: string }>("/api/reviews/pull-request/chat", {
+    method: "POST",
+    body: JSON.stringify({ url, question }),
+  });
+  return response.answer;
 }
 
 export async function getUserProfile(): Promise<QuillProfile> {

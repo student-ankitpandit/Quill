@@ -21,6 +21,8 @@
 .policy-section p:last-child { margin-bottom: 0; }
 .policy-section ul { display: grid; gap: 8px; padding-left: 20px; margin: 12px 0 0; }
 .policy-section li::marker { color: #ef7918; }
+.policy-inline-contact { color: #c65f0c; text-decoration: underline; text-underline-offset: 2px; }
+.policy-inline-contact:hover { color: #9b4e11; }
 .policy-contact { width: fit-content; display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 12px; color: #c65f0c; font-size: 12px; text-decoration: none; }
 .policy-contact:hover { color: #9b4e11; }
 .policy-page .site-footer { margin-top: 0; border-color: #e5e8ed; color: #707986; }

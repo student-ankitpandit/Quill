@@ -87,7 +87,7 @@ export function RazorpayCheckout({
       key,
       amount: order.amount,
       currency: order.currency,
-      name: "Quill",
+      name: "Quill AI",
       order_id: order.id,
       prefill: user,
       handler: async (response) => {

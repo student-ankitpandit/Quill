@@ -24,6 +24,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import {
   answerSideChat,
+  answerPullRequestQuestion,
   findExposedSecrets,
   isInformationalQuestion,
   publishChanges,
@@ -371,6 +372,10 @@ app.post("/api/reviews/pull-request", authMiddleware, async (req, res) => {
         state: pull.state,
         draft: pull.draft,
         merged: Boolean(pull.merged_at),
+        author: pull.user?.login ?? "Unknown author",
+        description: pull.body?.slice(0, 5_000) ?? "",
+        createdAt: pull.created_at,
+        commitCount: pull.commits,
         baseBranch: pull.base.ref,
         headBranch: pull.head.ref,
         changedFiles: files.length,
@@ -390,6 +395,62 @@ app.post("/api/reviews/pull-request", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "GitHub could not find this pull request or the installed app cannot access it." });
     }
     return res.status(502).json({ error: "Quill could not complete the pull request review. Please try again." });
+  }
+});
+
+app.post("/api/reviews/pull-request/chat", authMiddleware, async (req, res) => {
+  if (!req.installationId) {
+    return res.status(401).json({ error: "Connect the Quill GitHub App before asking about a pull request." });
+  }
+  const submittedUrl = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+  const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
+  if (!question || question.length > 2_000) {
+    return res.status(400).json({ error: "Enter a question of up to 2,000 characters." });
+  }
+
+  let owner = "";
+  let repo = "";
+  let pullNumber = 0;
+  try {
+    const url = new URL(submittedUrl);
+    const match = url.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/(?:files|commits|checks))?\/?$/i);
+    if (url.protocol !== "https:" || url.hostname.toLowerCase() !== "github.com" || !match?.[1] || !match[2] || !match[3]) {
+      return res.status(400).json({ error: "Enter a GitHub pull request URL, such as https://github.com/owner/repo/pull/123." });
+    }
+    owner = decodeURIComponent(match[1]);
+    repo = decodeURIComponent(match[2]);
+    pullNumber = Number(match[3]);
+  } catch {
+    return res.status(400).json({ error: "Enter a valid GitHub pull request URL." });
+  }
+
+  try {
+    const octokit = await getInstallationOctokit(req.installationId);
+    const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
+      owner,
+      repo,
+      pull_number: pullNumber,
+      per_page: 100,
+    });
+    const diff = files
+      .filter((file) => typeof file.patch === "string")
+      .map((file) => `diff --git a/${file.filename} b/${file.filename}\nstatus: ${file.status}\n${file.patch}`)
+      .join("\n");
+    if (!diff.trim()) {
+      return res.status(422).json({ error: "GitHub did not provide a text diff for this pull request." });
+    }
+    if (diff.length > 100_000) {
+      return res.status(413).json({ error: "This pull request is too large for a follow-up question in one pass." });
+    }
+    const answer = await answerPullRequestQuestion(question, redactExposedSecrets(diff));
+    return res.json({ answer });
+  } catch (error) {
+    console.error("Could not answer pull request question:", error);
+    const status = (error as { status?: number })?.status;
+    if (status === 404) {
+      return res.status(404).json({ error: "GitHub could not find this pull request or the installed app cannot access it." });
+    }
+    return res.status(502).json({ error: "Quill could not answer this pull request question. Please try again." });
   }
 });
 
