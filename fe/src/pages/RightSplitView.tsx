@@ -61,13 +61,6 @@ const statusLabel: Record<SessionStatus, string> = {
   stopped: "Stopped",
 };
 
-function isInformationalQuestion(text: string) {
-  const normalized = text.trim().toLocaleLowerCase();
-  const question = /^(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:explain|describe|summari[sz]e|tell\s+me|what|why|how|who|where|when|which|is|are|do|does|did)\b/.test(normalized);
-  const asksForChanges = /\b(fix|implement|change|add|remove|update|refactor|write|create|build|debug|test|run|install|deploy|modify|edit)\b/.test(normalized);
-  return question && !asksForChanges;
-}
-
 function appendIfNew(messages: Array<{ role: "user" | "assistant"; content: string }>, message: { role: "user" | "assistant"; content: string }) {
   const last = messages[messages.length - 1];
   if (last?.role === message.role && last.content === message.content) return messages;
@@ -252,7 +245,7 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     if (!session || status !== "done" || missingAnswerRecoveryRef.current) return;
     const hasAnswer = session.messages?.some((item: any) => item.role === "assistant" && typeof item.content === "string" && item.content.trim());
-    if (hasAnswer || !isInformationalQuestion(session.task)) return;
+    if (hasAnswer) return;
 
     // Recover old question-only sessions created before direct replies were saved.
     missingAnswerRecoveryRef.current = true;

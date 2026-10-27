@@ -40,6 +40,7 @@ export default function NewSession({
   const [error, setError] = useState("");
   const [planUsage, setPlanUsage] = useState<PlanUsage | null>(null);
   const [listening, setListening] = useState(false);
+  const taskInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [voiceSupported] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -175,11 +176,17 @@ export default function NewSession({
         setError("Voice input could not be started.");
       setListening(false);
     };
-    recognition.onend = () => setListening(false);
+    recognition.onend = () => {
+      setListening(false);
+      // The Speak button starts recognition, but dictated text should remain
+      // ready for the normal Enter-to-submit keyboard flow.
+      taskInputRef.current?.focus();
+    };
     recognitionRef.current = recognition;
     setError("");
     setListening(true);
     recognition.start();
+    taskInputRef.current?.focus();
   }
 
   const canSubmit = !busy && !!repo && task.trim().length > 0 && !!planUsage?.active && planUsage.remaining > 0;
@@ -241,6 +248,7 @@ export default function NewSession({
 
       <div className="composer">
         <textarea
+          ref={taskInputRef}
           value={task}
           onChange={(e) => setTask(e.target.value)}
           onKeyDown={(e) => {

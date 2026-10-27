@@ -14,6 +14,7 @@ export interface Session {
   repoFullName: string;
   sandboxId: string;
   task: string;
+  taskIntent?: "conversation" | "informational" | "repository_task";
   title: string;
   issueNumber?: number;
   status: "ready" | "running" | "waiting_for_input" | "done" | "error" | "stopped";

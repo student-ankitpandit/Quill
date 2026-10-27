@@ -25,8 +25,8 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   answerSideChat,
   answerPullRequestQuestion,
+  classifyUserIntent,
   findExposedSecrets,
-  isInformationalQuestion,
   publishChanges,
   queueAgentMessage,
   redactExposedSecrets,
@@ -955,6 +955,7 @@ app.post("/api/app/sessions", async (req, res) => {
           : "");
     }
 
+    const taskIntent = await classifyUserIntent(task);
     const token = await getInstallationToken(installationId);
 
     const sandboxTemplate = process.env.E2B_TEMPLATE?.trim();
@@ -991,6 +992,7 @@ app.post("/api/app/sessions", async (req, res) => {
       repoFullName,
       sandboxId: sandbox.sandboxId,
       task,
+      taskIntent,
       title,
       issueNumber, // undefined for free-text tasks (dropped when saved as JSON)
       status: "ready",
@@ -1068,8 +1070,7 @@ app.get("/api/sessions/:sessionId", async (req, res) => {
 
     let gitDiff = "";
 
-    if (!isInformationalQuestion(session.task)) {
-      try {
+    try {
         const sandbox = await connectSessionSandbox(session.sandboxId);
         const diffResult = await sandbox.commands.run(
           "git -C repo add -N . && git -C repo diff HEAD",
@@ -1079,7 +1080,7 @@ app.get("/api/sessions/:sessionId", async (req, res) => {
         );
 
         gitDiff = diffResult.stdout.slice(0, 200_000);
-      } catch (error) {
+    } catch (error) {
         if (isSandboxNotFoundError(error)) {
           return res.json({
             ...session,
@@ -1093,7 +1094,6 @@ app.get("/api/sessions/:sessionId", async (req, res) => {
           "Could not load session changes:",
           error instanceof Error ? error.message : String(error),
         );
-      }
     }
 
     return res.json({

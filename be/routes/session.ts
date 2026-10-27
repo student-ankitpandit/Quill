@@ -16,7 +16,6 @@ import {
   isSandboxNotFoundError,
   waitForPort,
 } from "../lib";
-import { isInformationalQuestion } from "../agent";
 
 const router = Router();
 const workspaceJobs = new Map<string, Promise<void>>();
@@ -198,7 +197,7 @@ async function prepareWorkspaceInternal(session: Session): Promise<void> {
 }
 
 export function prepareWorkspace(session: Session): Promise<void> {
-  if (isInformationalQuestion(session.task)) return Promise.resolve();
+  if (session.taskIntent !== "repository_task") return Promise.resolve();
   const job = prepareWorkspaceInternal(session);
   workspaceJobs.set(session.id, job);
   return job.finally(() => {

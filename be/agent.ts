@@ -57,9 +57,11 @@ async function takeQueuedMessages(sessionId: string, includePending = false) {
   });
 }
 
+export type UserIntent = "conversation" | "informational" | "repository_task";
+
 const SYSTEM_PROMPT =
   "You are an agent that can answer questions and make requested code changes. " +
-  "For a brief greeting such as hi or hello, greet the user and ask how you can help with the repository, referring to it by its repository name only. Do not include the GitHub owner's username or the full owner/repository identifier. Keep the reply conversational; do not claim repository work was done or mention commits, pushes, or pull requests. " +
+  "For a greeting, acknowledgement, social message, or other casual message that does not ask for repository work, reply conversationally and ask how you can help if appropriate. Do not inspect or change the repository, claim repository work was done, or mention commits, pushes, or pull requests for these messages. " +
   "For a straightforward informational question, answer it directly in plain language. Do not call tools, inspect or change files, start services, or create a pull request for an informational question. " +
   "For repository-specific questions, use the repository name and conversation context; be clear about uncertainty instead of inventing details you cannot know without inspection. " +
   "Never claim that changes are on GitHub based on a local git commit. Quill publishes and verifies changes after your response; do not run git push yourself. " +
@@ -67,29 +69,42 @@ const SYSTEM_PROMPT =
   "Use repository tools only when the user explicitly asks you to inspect or change the code. " +
   "If a code task is blocked on information you cannot find yourself, use ask_user.";
 
-function isGreeting(text: string): boolean {
-  const normalized = text
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[.!?,]+$/g, "")
-    .replace(/\s+/g, " ");
-  return /^(?:(?:hi|hello|hey)(?:\s+(?:there|again|there again|again there))?|good (?:morning|afternoon|evening)|how are you(?: doing)?|what's up)$/.test(
-    normalized,
-  );
-}
-
-export function isInformationalQuestion(text: string): boolean {
-  if (isGreeting(text)) return true;
-  const normalized = text.trim().toLocaleLowerCase();
-  const isQuestion =
-    /^(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:explain|describe|summari[sz]e|tell\s+me|what|why|how|who|where|when|which|is|are|do|does|did)\b/.test(
-      normalized,
-    );
-  const requestsCodeWork =
-    /\b(fix|implement|change|add|remove|update|refactor|write|create|build|debug|test|run|install|deploy|modify|edit)\b/.test(
-      normalized,
-    );
-  return isQuestion && !requestsCodeWork;
+export async function classifyUserIntent(text: string): Promise<UserIntent> {
+  const response = await getOpenAI().chat.completions.create({
+    model: MODEL,
+    messages: [
+      {
+        role: "system",
+        content:
+          'Classify the user message into exactly one intent. "repository_task" means the user asks Quill to inspect, modify, test, run, explain, or otherwise work with the repository or code. "informational" means they ask a general question that does not require repository access. "conversation" means a greeting, acknowledgement, social message, unclear message, or anything that does not request useful work. Return only JSON in the form {"intent":"conversation|informational|repository_task"}. Use the meaning of the whole message, not keyword matching.',
+      },
+      { role: "user", content: text },
+    ],
+    response_format: { type: "json_object" },
+  });
+  const content = response.choices[0]?.message.content;
+  if (!content) throw new Error("Intent classifier returned no response");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new Error("Intent classifier returned invalid JSON");
+  }
+  const intent =
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "intent" in parsed &&
+    typeof parsed.intent === "string"
+      ? parsed.intent
+      : "";
+  if (
+    intent !== "conversation" &&
+    intent !== "informational" &&
+    intent !== "repository_task"
+  ) {
+    throw new Error("Intent classifier returned an invalid intent");
+  }
+  return intent;
 }
 
 export async function answerSideChat(
@@ -591,6 +606,8 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
     let summary = "";
     let finished = false;
     let finalTurnIsInformational = false;
+    let classifiedUserText = session.taskIntent ? session.task : "";
+    let userIntent: UserIntent = session.taskIntent ?? "repository_task";
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const queuedAtStart = await takeQueuedMessages(session.id, i === 0);
@@ -621,9 +638,13 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
         typeof latestUserMessage?.content === "string"
           ? latestUserMessage.content
           : "";
-      finalTurnIsInformational = isInformationalQuestion(userText);
+      if (userText !== classifiedUserText) {
+        userIntent = await classifyUserIntent(userText);
+        classifiedUserText = userText;
+      }
+      finalTurnIsInformational = userIntent !== "repository_task";
 
-      if (isGreeting(userText)) {
+      if (userIntent === "conversation") {
         const queuedMessages = await takeQueuedMessages(session.id);
         if (queuedMessages.length) {
           session.messages.push(
@@ -640,7 +661,7 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
         }
 
         const repoName = session.repoFullName.split("/").pop() || "repository";
-        const greeting = `Hi! How can I help with the ${repoName} repository?`;
+        const greeting = `Hi! How can I help with the ${repoName} repository today?`;
         session.messages.push({ role: "assistant", content: greeting });
         publish(session.id, {
           type: "message",
