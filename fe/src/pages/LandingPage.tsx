@@ -459,6 +459,28 @@ export function LandingPage() {
           </h2>
         </div>
         <div className="pricing-cards">
+          <article className="pricing-card" data-scroll-reveal>
+            <div className="pricing-plan-name">Free</div>
+            <p className="pricing-plan-description">
+              Try Quill on a real repository before choosing a paid plan.
+            </p>
+            <div className="pricing-price">
+              <span className="pricing-currency">₹</span>0
+              <span className="pricing-period">/ free trial</span>
+            </div>
+            <div className="pricing-price-note">
+              No payment required · 5 agent runs total
+            </div>
+            <div className="pricing-divider" />
+            <ul>
+              <li><Check size={15} />5 agent runs to try Quill</li>
+              <li><Check size={15} />Repository questions and code changes</li>
+              <li><Check size={15} />Reviewable workspace changes</li>
+            </ul>
+            <button type="button" className="pricing-button" onClick={enterQuill}>
+              Try Quill free <ArrowRight size={15} />
+            </button>
+          </article>
           <article className="pricing-card" data-scroll-reveal data-reveal-delay="1">
             <div className="pricing-plan-name">Basic</div>
             <p className="pricing-plan-description">
@@ -475,7 +497,7 @@ export function LandingPage() {
             <ul>
               <li>
                 <Check size={15} />
-                20 agent runs per 30 days
+                50 agent runs per 30 days
               </li>
               <li>
                 <Check size={15} />

@@ -2,6 +2,7 @@ import "./index.css";
 import { useRoute, navigate, clearQueryParams } from "@/lib/router";
 import {
   saveAuth,
+  clearAuth,
   isLoggedIn,
   getInstallUrl,
   getLoginUrl,
@@ -83,23 +84,58 @@ function InstallationRequiredPage() {
   );
 }
 
+function GitHubReconnectPage({ expiredSession = false }: { expiredSession?: boolean }) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#0d0e0f] px-6 text-[#eff0f1]">
+      <section className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center shadow-2xl shadow-black/30">
+        <div className="mx-auto mb-5 grid h-12 w-12 place-items-center rounded-xl border border-orange-400/25 bg-orange-400/10 text-orange-300">
+          <Github size={22} />
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {expiredSession ? "Sign in to continue" : "Reconnect GitHub"}
+        </h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-neutral-400">
+          {expiredSession
+            ? "Your Quill sign-in needs to be renewed. Continue with GitHub when you’re ready."
+            : "Quill couldn’t refresh its GitHub connection automatically. Reconnect when you’re ready to continue using your repositories."}
+        </p>
+        <button
+          type="button"
+          className="mx-auto mt-7 inline-flex items-center gap-2 rounded-lg bg-[#ff891f] px-5 py-3 text-sm font-semibold text-black transition hover:bg-[#ffa34d]"
+          onClick={() => { window.location.href = getLoginUrl(); }}
+        >
+          <Github size={17} /> {expiredSession ? "Sign in with GitHub" : "Reconnect GitHub"}
+        </button>
+        <button
+          type="button"
+          className="mx-auto mt-4 block text-sm text-neutral-400 hover:text-white"
+          onClick={() => { clearAuth(); navigate({ page: "landing" }); }}
+        >
+          Sign out and go to Quill home
+        </button>
+      </section>
+    </main>
+  );
+}
+
 function DashboardGate({ initialView = "new" }: { initialView?: "new" | "settings" | "review" }) {
   const [status, setStatus] = useState<
-    "checking" | "ready" | "install" | "login"
+    "checking" | "ready" | "install" | "login" | "reauthenticate"
   >(() => isLoggedIn() && hasInstallation() ? "ready" : "checking");
 
   useEffect(() => {
+    // The signed Quill session already contains the installation id. Refreshing
+    // GitHub OAuth on every dashboard entry needlessly rotates refresh tokens.
+    if (isLoggedIn() && hasInstallation()) return;
+
     let cancelled = false;
 
     resolveInstallation()
       .then((result) => {
         if (cancelled) return;
         if (result.status === "ok") setStatus("ready");
-        else if (
-          result.status === "unauthenticated" ||
-          result.status === "reauthenticate"
-        )
-          setStatus("login");
+        else if (result.status === "unauthenticated") setStatus("login");
+        else if (result.status === "reauthenticate") setStatus("reauthenticate");
         else setStatus("install");
       })
       .catch(() => {
@@ -124,8 +160,11 @@ function DashboardGate({ initialView = "new" }: { initialView?: "new" | "setting
   }
 
   if (status === "login") {
-    window.location.href = getLoginUrl();
-    return null;
+    return <GitHubReconnectPage expiredSession />;
+  }
+
+  if (status === "reauthenticate") {
+    return <GitHubReconnectPage />;
   }
 
   if (status === "install") {

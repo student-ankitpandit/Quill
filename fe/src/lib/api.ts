@@ -431,7 +431,7 @@ export type QuillProfile = { userId: string; name: string; login: string; email:
 
 export type PlanUsage = {
   active: boolean;
-  plan: "basic" | "pro" | null;
+  plan: "free" | "basic" | "pro" | null;
   limit: number;
   used: number;
   remaining: number;
@@ -592,12 +592,15 @@ export function hasInstallation(): boolean {
   return Boolean(getInstallationId());
 }
 
-export async function resolveInstallation(): Promise<
+type InstallationResolution =
   | { status: "ok"; installationId: string }
   | { status: "missing" }
   | { status: "unauthenticated" }
-  | { status: "reauthenticate" }
-> {
+  | { status: "reauthenticate" };
+
+let installationResolutionRequest: Promise<InstallationResolution> | null = null;
+
+async function requestInstallationResolution(): Promise<InstallationResolution> {
   const res = await fetch(`${BACKEND_URL}/api/auth/installation`, {
     headers: {
       ...authHeaders(),
@@ -606,6 +609,9 @@ export async function resolveInstallation(): Promise<
 
   if (res.status === 401 || res.status === 403) {
     return { status: "unauthenticated" };
+  }
+  if (res.status >= 500 || res.status === 429) {
+    throw new Error("GitHub connection could not be checked right now.");
   }
   if (!res.ok) return { status: "missing" };
 
@@ -621,4 +627,13 @@ export async function resolveInstallation(): Promise<
   if (body.token) saveAuth(body.token, id);
   else saveInstallation(id);
   return { status: "ok", installationId: id };
+}
+
+export function resolveInstallation(): Promise<InstallationResolution> {
+  if (!installationResolutionRequest) {
+    installationResolutionRequest = requestInstallationResolution().finally(() => {
+      installationResolutionRequest = null;
+    });
+  }
+  return installationResolutionRequest;
 }

@@ -234,7 +234,9 @@ export default function NewSession({
           ? "Checking your plan…"
           : !planUsage.active
             ? <>An active plan is required to start agent runs. <a href="/#pricing">View plans</a>.</>
-            : `${planUsage.plan === "basic" ? "Basic" : "Pro"} plan · ${planUsage.used} of ${planUsage.limit} monthly agent runs used · ${planUsage.remaining} remaining`}
+            : planUsage.plan === "free"
+              ? <>Free trial · {planUsage.used} of {planUsage.limit} agent runs used · {planUsage.remaining} remaining{planUsage.remaining === 0 && <> · <a href="/#pricing">Choose a paid plan</a></>}</>
+              : `${planUsage.plan === "basic" ? "Basic" : "Pro"} plan · ${planUsage.used} of ${planUsage.limit} monthly agent runs used · ${planUsage.remaining} remaining`}
       </p>
 
       <div className="composer">
@@ -242,7 +244,15 @@ export default function NewSession({
           value={task}
           onChange={(e) => setTask(e.target.value)}
           onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              !e.repeat &&
+              !e.nativeEvent.isComposing
+            ) {
+              e.preventDefault();
+              if (canSubmit) void submit();
+            }
           }}
           placeholder="Describe a bug to fix or a change to make"
           rows={4}
@@ -299,7 +309,7 @@ export default function NewSession({
           Retry loading repositories
         </button>
       )}
-      <p className="hint">Press Ctrl or ⌘ + Enter to start.</p>
+      <p className="hint">Enter to start · Shift+Enter for a new line.</p>
     </section>
   );
 }

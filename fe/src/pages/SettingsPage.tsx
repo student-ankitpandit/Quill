@@ -24,6 +24,44 @@ import "./SettingsPage.css";
 
 type Section = "Overview" | "Usage" | "Plan & billing" | "Account" | "Connections";
 
+const SETTINGS_CACHE_MS = 15_000;
+let profileCache: { value: QuillProfile; fetchedAt: number } | null = null;
+let usageCache: { value: PlanUsage; fetchedAt: number } | null = null;
+let billingCache: { value: BillingHistoryItem[]; fetchedAt: number } | null = null;
+let profileRequest: Promise<QuillProfile> | null = null;
+let usageRequest: Promise<PlanUsage> | null = null;
+let billingRequest: Promise<BillingHistoryItem[]> | null = null;
+
+function loadProfile() {
+  if (profileCache && Date.now() - profileCache.fetchedAt < SETTINGS_CACHE_MS) return Promise.resolve(profileCache.value);
+  if (!profileRequest) {
+    profileRequest = getUserProfile()
+      .then((value) => { profileCache = { value, fetchedAt: Date.now() }; return value; })
+      .finally(() => { profileRequest = null; });
+  }
+  return profileRequest;
+}
+
+function loadUsage() {
+  if (usageCache && Date.now() - usageCache.fetchedAt < SETTINGS_CACHE_MS) return Promise.resolve(usageCache.value);
+  if (!usageRequest) {
+    usageRequest = getPlanUsage()
+      .then((value) => { usageCache = { value, fetchedAt: Date.now() }; return value; })
+      .finally(() => { usageRequest = null; });
+  }
+  return usageRequest;
+}
+
+function loadBilling() {
+  if (billingCache && Date.now() - billingCache.fetchedAt < SETTINGS_CACHE_MS) return Promise.resolve(billingCache.value);
+  if (!billingRequest) {
+    billingRequest = getBillingHistory()
+      .then((value) => { billingCache = { value, fetchedAt: Date.now() }; return value; })
+      .finally(() => { billingRequest = null; });
+  }
+  return billingRequest;
+}
+
 const sections: { name: Section; icon: typeof LayoutGrid; keywords: string }[] = [
   { name: "Overview", icon: LayoutGrid, keywords: "home summary status" },
   { name: "Usage", icon: BarChart3, keywords: "quota runs limits activity" },
@@ -49,33 +87,45 @@ function formatMoney(amount: number, currency: string) {
 export default function Settings() {
   const [search, setSearch] = useState("");
   const [section, setSection] = useState<Section>("Overview");
-  const [profile, setProfile] = useState<QuillProfile | null>(null);
-  const [usage, setUsage] = useState<PlanUsage | null>(null);
-  const [billing, setBilling] = useState<BillingHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<QuillProfile | null>(() => profileCache?.value ?? null);
+  const [usage, setUsage] = useState<PlanUsage | null>(() => usageCache?.value ?? null);
+  const [billing, setBilling] = useState<BillingHistoryItem[]>(() => billingCache?.value ?? []);
+  const [profileLoading, setProfileLoading] = useState(() => !profileCache);
+  const [usageLoading, setUsageLoading] = useState(() => !usageCache);
+  const [billingLoading, setBillingLoading] = useState(() => !billingCache);
   const [loadError, setLoadError] = useState("");
   const githubConnected = isLoggedIn();
   const filteredSections = useMemo(() => sections.filter(({ name, keywords }) => `${name} ${keywords}`.toLowerCase().includes(search.trim().toLowerCase())), [search]);
 
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([getUserProfile(), getPlanUsage(), getBillingHistory()]).then(([profileResult, usageResult, billingResult]) => {
-      if (!mounted) return;
-      if (profileResult.status === "fulfilled") setProfile(profileResult.value);
-      if (usageResult.status === "fulfilled") setUsage(usageResult.value);
-      if (billingResult.status === "fulfilled") setBilling(billingResult.value);
-      if ([profileResult, usageResult, billingResult].every((result) => result.status === "rejected")) {
-        setLoadError("Could not load account details. Please try again.");
-      }
-      setLoading(false);
-    });
+    // Overview only needs account and usage. Keep those requests independent so
+    // a slow GitHub profile refresh never blocks the plan/run summary.
+    void loadProfile().then((value) => { if (mounted) setProfile(value); })
+      .catch(() => { if (mounted && !profileCache) setLoadError("Could not load account details. Please try again."); })
+      .finally(() => { if (mounted) setProfileLoading(false); });
+    void loadUsage().then((value) => { if (mounted) setUsage(value); })
+      .catch(() => { if (mounted && !usageCache) setLoadError("Could not load account details. Please try again."); })
+      .finally(() => { if (mounted) setUsageLoading(false); });
     return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    if (section !== "Plan & billing") return;
+    let mounted = true;
+    setBillingLoading(!billingCache);
+    void loadBilling().then((value) => { if (mounted) setBilling(value); })
+      .catch(() => { if (mounted) setLoadError("Could not load billing history. Please try again."); })
+      .finally(() => { if (mounted) setBillingLoading(false); });
+    return () => { mounted = false; };
+  }, [section]);
 
   const chooseSection = (next: Section) => setSection(next);
   const periodEnd = usage?.periodEnd ? formatDate(usage.periodEnd) : null;
   const usagePercent = usage?.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
-  const planName = usage?.plan ? usage.plan === "basic" ? "Basic" : "Pro" : "No active plan";
+  const planName = usage?.plan
+    ? usage.plan === "free" ? "Free" : usage.plan === "basic" ? "Basic" : "Pro"
+    : "No active plan";
 
   const sectionContent = () => {
     if (section === "Connections") {
@@ -98,8 +148,8 @@ export default function Settings() {
     if (section === "Overview") {
       return <>
         <div className="settings-overview-grid">
-          <article className="settings-summary-card"><span>Current plan</span><strong>{loading ? "Loading…" : planName}</strong><button type="button" onClick={() => chooseSection("Plan & billing")}>View plan <ArrowRight size={14} /></button></article>
-          <article className="settings-summary-card"><span>Agent runs remaining</span><strong>{loading ? "Loading…" : usage?.active ? `${usage.remaining} / ${usage.limit}` : "—"}</strong><button type="button" onClick={() => chooseSection("Usage")}>View usage <ArrowRight size={14} /></button></article>
+          <article className="settings-summary-card"><span>Current plan</span><strong>{usageLoading ? "Loading…" : planName}</strong><button type="button" onClick={() => chooseSection("Plan & billing")}>View plan <ArrowRight size={14} /></button></article>
+          <article className="settings-summary-card"><span>Agent runs remaining</span><strong>{usageLoading ? "Loading…" : usage?.active ? `${usage.remaining} / ${usage.limit}` : "—"}</strong><button type="button" onClick={() => chooseSection("Usage")}>View usage <ArrowRight size={14} /></button></article>
           <article className="settings-summary-card"><span>GitHub connection</span><strong className="settings-connection-value"><i className={githubConnected ? "is-connected" : ""} />{githubConnected ? "Connected" : "Not connected"}</strong><button type="button" onClick={() => chooseSection("Connections")}>Manage connection <ArrowRight size={14} /></button></article>
         </div>
         <h2 className="settings-section-heading">Account overview</h2>
@@ -107,6 +157,7 @@ export default function Settings() {
           <div><span className="settings-overview-name">{profile?.name || profile?.login || "Your Quill account"}</span><p>{profile?.email || "Your account and workspace details at a glance."}</p></div>
           <button type="button" className="btn btn-quiet" onClick={() => chooseSection("Account")}>Manage account <ArrowRight size={14} /></button>
         </div>
+        {loadError && <p role="alert" className="profile-error">{loadError}</p>}
       </>;
     }
 
@@ -114,11 +165,11 @@ export default function Settings() {
       return <>
         <div className="settings-card settings-usage-card">
           <div className="settings-card-body">
-            <div className="settings-usage-heading"><div><h2>{usage?.active ? `${planName} plan usage` : "No active plan"}</h2><p>{usage?.active && periodEnd ? `Current period ends ${periodEnd}` : "Choose a plan to start agent runs."}</p></div><strong>{usage?.active ? `${usage.used} / ${usage.limit}` : "—"}</strong></div>
+            <div className="settings-usage-heading"><div><h2>{usage?.active ? usage.plan === "free" ? "Free trial usage" : `${planName} plan usage` : "No active plan"}</h2><p>{usage?.active && periodEnd ? `Current period ends ${periodEnd}` : usage?.plan === "free" ? "Your five free agent runs are a one-time trial." : "Choose a plan to start agent runs."}</p></div><strong>{usage?.active ? `${usage.used} / ${usage.limit}` : "—"}</strong></div>
             {usage?.active && <><div className="settings-usage-track" role="progressbar" aria-label="Agent run usage" aria-valuemin={0} aria-valuemax={usage.limit} aria-valuenow={usage.used}><span style={{ width: `${usagePercent}%` }} /></div><div className="settings-usage-foot"><span>{usage.remaining} runs remaining</span><span>{usagePercent}% used</span></div></>}
           </div>
         </div>
-        <p className="settings-helper-copy">Usage counts agent runs during your current 30-day plan period. Follow-up messages within an active run don’t start a separate run.</p>
+        <p className="settings-helper-copy">{usage?.plan === "free" ? "Free trial usage is limited to five agent runs total. Paid plan usage resets with each 30-day period." : "Usage counts agent runs during your current 30-day plan period. Follow-up messages within an active run don’t start a separate run."}</p>
         {!usage?.active && <a className="btn btn-quiet settings-primary-link" href="/#pricing">Explore plans <ArrowRight size={15} /></a>}
         {loadError && <p role="alert" className="profile-error">{loadError}</p>}
       </>;
@@ -127,14 +178,18 @@ export default function Settings() {
     if (section === "Plan & billing") {
       return <>
         <div className="settings-card">
-          <div className="settings-card-heading"><div className="settings-provider-icon"><CreditCard size={20} /></div><div><h2>{planName}</h2><p>{usage?.active ? "Active subscription" : "Subscription and payment details"}</p></div><span className={`settings-plan-status${usage?.active ? " active" : ""}`}>{usage?.active ? "Active" : "No active plan"}</span></div>
+          <div className="settings-card-heading"><div className="settings-provider-icon"><CreditCard size={20} /></div><div><h2>{planName}</h2><p>{usage?.plan === "free" ? "Free trial access" : usage?.active ? "Active subscription" : "Subscription and payment details"}</p></div><span className={`settings-plan-status${usage?.active && usage.plan !== "free" ? " active" : ""}`}>{usage?.plan === "free" ? "Free" : usage?.active ? "Active" : "No active plan"}</span></div>
           <div className="settings-card-body settings-billing-summary">
-            {usage?.active ? <><p>Your {planName} plan includes {usage.limit} agent runs for this 30-day period.</p><div className="settings-billing-meta"><span>Period ends</span><strong>{periodEnd}</strong></div><p className="settings-helper-copy">This is a one-time payment plan. Renew manually when you’re ready for another period.</p></> : <><p>You don’t have an active plan yet. Choose a plan to unlock agent runs and repository work.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">View plans <ArrowRight size={15} /></a></>}
+            {usage?.plan === "free"
+              ? <><p>Your free trial includes five agent runs total. Upgrade any time for a larger usage allowance.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">Explore paid plans <ArrowRight size={15} /></a></>
+              : usage?.active
+                ? <><p>Your {planName} plan includes {usage.limit} agent runs for this 30-day period.</p><div className="settings-billing-meta"><span>Period ends</span><strong>{periodEnd}</strong></div><p className="settings-helper-copy">This is a one-time payment plan. Renew manually when you’re ready for another period.</p></>
+                : <><p>You don’t have an active plan yet. Choose a plan to unlock agent runs and repository work.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">View plans <ArrowRight size={15} /></a></>}
           </div>
         </div>
         <h2 className="settings-section-heading">Payment history</h2>
         <div className="settings-card settings-history-card">
-          {billing.length ? billing.map((item) => <div className="settings-history-row" key={item.id}><div><strong>{item.plan === "pro" ? "Pro" : "Basic"} plan</strong><span>{formatDate(item.createdAt)}</span></div><div className="settings-history-amount"><strong>{formatMoney(item.priceMinorUnits, item.currency)}</strong><span className={`settings-history-status status-${item.status}`}>{item.status.replaceAll("_", " ")}</span></div></div>) : <div className="settings-history-empty">{loading ? "Loading payment history…" : "Payments and subscription updates will appear here."}</div>}
+          {billing.length ? billing.map((item) => <div className="settings-history-row" key={item.id}><div><strong>{item.plan === "pro" ? "Pro" : "Basic"} plan</strong><span>{formatDate(item.createdAt)}</span></div><div className="settings-history-amount"><strong>{formatMoney(item.priceMinorUnits, item.currency)}</strong><span className={`settings-history-status status-${item.status}`}>{item.status.replaceAll("_", " ")}</span></div></div>) : <div className="settings-history-empty">{billingLoading ? "Loading payment history…" : "Payments and subscription updates will appear here."}</div>}
         </div>
         {loadError && <p role="alert" className="profile-error">{loadError}</p>}
       </>;
@@ -143,9 +198,8 @@ export default function Settings() {
     return <>
       <div className="settings-card profile-card">
         <div className="settings-profile-heading"><div className="profile-avatar">{profile?.name?.slice(0, 1).toUpperCase() || profile?.login?.slice(0, 1).toUpperCase() || <UserCircle size={20} />}</div><div><h2>{profile?.name || "Your account"}</h2><p>{profile?.login ? `@${profile.login}` : "Signed in with GitHub"}</p></div></div>
-        <div className="settings-account-row"><span>Name</span><strong>{loading ? "Loading…" : profile?.name || "Not provided"}</strong></div>
-        <div className="settings-account-row"><span>GitHub username</span><strong>{loading ? "Loading…" : profile?.login ? `@${profile.login}` : "Unavailable"}</strong></div>
-        <div className="settings-account-row"><span>Email</span><strong>{loading ? "Loading…" : profile?.email || "Not provided by GitHub"}</strong></div>
+        <div className="settings-account-row"><span>Name</span><strong>{profileLoading ? "Loading…" : profile?.name || "Not provided"}</strong></div>
+        <div className="settings-account-row"><span>GitHub username</span><strong>{profileLoading ? "Loading…" : profile?.login ? `@${profile.login}` : "Unavailable"}</strong></div>
       </div>
       {loadError && <p role="alert" className="profile-error">{loadError}</p>}
     </>;

@@ -7,7 +7,7 @@ export type InstallationData = {
   githubUserId: string;
   refreshToken: string | null;
   email?: string | null;
-  emailLookupAt?: number;
+  emailLookupAt?: number | null;
   name?: string;
   login?: string;
   createdAt: number;

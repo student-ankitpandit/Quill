@@ -125,7 +125,10 @@ app.get("/api/auth/github", (req, res) => {
     .trim()
     .replace(/\/+$/, "");
   const redirectUri = `${backendUrl}/api/auth/github/callback`;
-  const scope = "user:email,read:user,read:org,offline_access";
+  // GitHub OAuth expects a space-delimited scope list. Commas are not
+  // separators here, so requesting multiple scopes this way can silently
+  // leave user:email unavailable to /user/emails.
+  const scope = "user:email read:user read:org offline_access";
   const state = installationId
     ? `&state=${encodeURIComponent(installationId)}`
     : "";
@@ -185,7 +188,9 @@ app.get("/api/auth/github/callback", async (req, res) => {
         githubUserId: String(githubUser.id),
         refreshToken: tokenResponse.refreshToken,
         email: githubUser.email,
-        emailLookupAt: undefined,
+        // A fresh OAuth grant may include user:email even if a previous
+        // lookup was throttled while the user had not granted that scope.
+        emailLookupAt: null,
         name: githubUser.name ?? undefined,
         login: githubUser.login,
       });
@@ -737,8 +742,16 @@ app.get("/api/auth/installation", async (req, res) => {
       storedInstallation.installation_id,
     );
   } catch (error) {
-    console.warn("Could not refresh this user's GitHub installation access", error);
-    return res.json({ reauthenticate: true });
+    const githubError = axios.isAxiosError(error) ? error.response?.data as { error?: string } | undefined : undefined;
+    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    const invalidRefreshToken = status === 400 && githubError?.error === "invalid_grant";
+    console.warn(
+      invalidRefreshToken
+        ? "The user's GitHub refresh token was revoked; explicit reauthentication is required."
+        : `Could not refresh this user's GitHub installation access${status ? ` (HTTP ${status})` : ""}.`,
+    );
+    if (invalidRefreshToken) return res.json({ reauthenticate: true });
+    return res.status(503).json({ error: "GitHub connection could not be checked right now. Existing Quill sessions can continue; retry the connection check later." });
   }
 
   if (!instId) {
