@@ -26,7 +26,6 @@ import {
   getSession,
   getSessionChanges,
   getSideChat,
-  listSessions,
   listWorkspaceFiles,
   mergePullRequest,
   readWorkspaceFile,
@@ -41,6 +40,8 @@ import {
   writeWorkspaceFile,
 } from "@/lib/api";
 import type { LogEntry, Session, SessionStatus, SideChatMessage, WorkspaceEntry } from "@/lib/api";
+import { getCachedSessions, listSessions } from "./apiPage";
+import type { SessionSummary } from "./apiPage";
 
 type WorkspacePanel = "files" | "changes" | "terminal" | "side-chat" | "progress";
 
@@ -69,7 +70,7 @@ function appendIfNew(messages: Array<{ role: "user" | "assistant"; content: stri
 
 export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [recentSessions, setRecentSessions] = useState<Session[]>([]);
+  const [recentSessions, setRecentSessions] = useState<SessionSummary[] | null>(() => getCachedSessions());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState<SessionStatus>("ready");

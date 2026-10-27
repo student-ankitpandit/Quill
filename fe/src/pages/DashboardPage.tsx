@@ -11,8 +11,6 @@ import Settings from "./SettingsPage";
 import ReviewPage from "./ReviewPage";
 
 type View = "new" | "settings" | "review";
-let sessionSummaryCache: { installationId: string | null; sessions: SessionSummary[] } | null = null;
-
 function sameSessionSummaries(a: SessionSummary[], b: SessionSummary[]) {
   return a.length === b.length && a.every((session, index) => {
     const next = b[index];
@@ -26,16 +24,13 @@ function sameSessionSummaries(a: SessionSummary[], b: SessionSummary[]) {
 export default function Dashboard({ onLogout, initialView = "new" }: { onLogout?: () => void; initialView?: View }) {
   const installationId = getInstallationId();
   const [view, setView] = useState<View>(initialView);
-  const [sessions, setSessions] = useState<SessionSummary[] | null>(() =>
-    sessionSummaryCache?.installationId === installationId ? sessionSummaryCache.sessions : null,
-  );
+  const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const next = await listSessions();
-      sessionSummaryCache = { installationId, sessions: next };
+      const next = await listSessions(true);
       setSessions((current) => current && sameSessionSummaries(current, next) ? current : next);
       setLoadError(false);
     } catch {
@@ -49,7 +44,7 @@ export default function Dashboard({ onLogout, initialView = "new" }: { onLogout?
   }, [initialView]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
     const t = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, 20_000);

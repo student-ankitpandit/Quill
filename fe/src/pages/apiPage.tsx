@@ -99,11 +99,57 @@ export const listRepos = (forceRefresh = false): Promise<Repo[]> => {
   );
   return pending;
 };
-export const listSessions = () => request<SessionSummary[]>(ROUTES.sessions);
+let sessionCache: { data: SessionSummary[]; fetchedAt: number; installationId: string | null } | null = null;
+let sessionRequest: { installationId: string | null; promise: Promise<SessionSummary[]> } | null = null;
+
+export const getCachedSessions = (): SessionSummary[] | null => {
+  const installationId = getInstallationId();
+  return sessionCache?.installationId === installationId ? sessionCache.data : null;
+};
+
+export const listSessions = (forceRefresh = false): Promise<SessionSummary[]> => {
+  const installationId = getInstallationId();
+  if (
+    !forceRefresh &&
+    sessionCache?.installationId === installationId &&
+    Date.now() - sessionCache.fetchedAt < 30_000
+  ) {
+    return Promise.resolve(sessionCache.data);
+  }
+  if (!forceRefresh && sessionRequest?.installationId === installationId) {
+    return sessionRequest.promise;
+  }
+  const pending = request<SessionSummary[]>(ROUTES.sessions).then((sessions) => {
+    sessionCache = { data: sessions, fetchedAt: Date.now(), installationId };
+    return sessions;
+  });
+  sessionRequest = { installationId, promise: pending };
+  void pending.then(
+    () => {
+      if (sessionRequest?.promise === pending) sessionRequest = null;
+    },
+    () => {
+      if (sessionRequest?.promise === pending) sessionRequest = null;
+    },
+  );
+  return pending;
+};
 export const getSession = (id: string) => request<SessionSummary>(ROUTES.session(id));
 
-export const createSession = (input: { repoFullName: string; task?: string; issueNumber?: number }) =>
-  request<SessionSummary>(ROUTES.createSession, post(input));
+export const createSession = async (
+  input: { repoFullName: string; task?: string; issueNumber?: number },
+) => {
+  const session = await request<SessionSummary>(ROUTES.createSession, post(input));
+  const installationId = getInstallationId();
+  if (sessionCache?.installationId === installationId) {
+    sessionCache = {
+      data: [session, ...sessionCache.data.filter((item) => item.id !== session.id)],
+      fetchedAt: Date.now(),
+      installationId,
+    };
+  }
+  return session;
+};
 
 export const getRepoConfig = (repoFullName: string) =>
   request<RepoConfig>(`${ROUTES.repoConfig}?repoFullName=${encodeURIComponent(repoFullName)}`);
