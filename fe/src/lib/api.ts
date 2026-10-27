@@ -493,6 +493,7 @@ export function reviewAgentPullRequest(url: string): Promise<AgentPullRequestRev
   return request<AgentPullRequestReview>("/api/reviews/pull-request", {
     method: "POST",
     body: JSON.stringify({ url }),
+    signal: AbortSignal.timeout(90_000),
   });
 }
 

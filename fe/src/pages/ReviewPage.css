@@ -14,6 +14,7 @@
 .review-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; color: var(--accent); font-size: 11px; }
 .review-status.merged { color: #35c98a; }
 .review-card-actions { display: flex; flex: none; align-items: center; gap: 12px; }
+.review-card-error { flex-basis: 100%; margin: -8px 0 0 51px; color: #d04b43; font-size: 12px; line-height: 1.5; }
 .review-github-link { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; text-decoration: none; }
 .review-github-link:hover { color: var(--text); }
 .review-empty { display: grid; min-height: 230px; justify-items: center; align-content: center; padding: 28px; border: 1px dashed var(--line); border-radius: 14px; text-align: center; }
@@ -137,6 +138,7 @@
   .review-page-heading { align-items: flex-start; flex-direction: column; gap: 14px; }
   .review-card { align-items: flex-start; flex-direction: column; }
   .review-card-actions { width: 100%; flex-wrap: wrap; }
+  .review-card-error { margin: 0; }
   .review-url-row { align-items: stretch; flex-direction: column; }
   .review-result-heading { flex-direction: column; }
   .review-detail-grid { grid-template-columns: 1fr; padding: 15px; }

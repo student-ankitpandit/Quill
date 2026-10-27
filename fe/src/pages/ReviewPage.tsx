@@ -18,6 +18,7 @@ export default function ReviewPage({
   const [reviewTab, setReviewTab] = useState<"overview" | "findings" | "files">("overview");
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState("");
+  const [failedReviewUrl, setFailedReviewUrl] = useState("");
   const [chatQuestion, setChatQuestion] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState("");
@@ -30,11 +31,18 @@ export default function ReviewPage({
     setChatMessages([]);
     setChatError("");
     setReviewError("");
+    setFailedReviewUrl("");
     setReviewing(true);
     try {
       setReview(await reviewAgentPullRequest(prUrl));
     } catch (error) {
-      setReviewError(error instanceof Error ? error.message : "Could not review this pull request.");
+      const message = error instanceof DOMException && error.name === "TimeoutError"
+        ? "The review request timed out. Please retry; larger pull requests can take longer to analyze."
+        : error instanceof Error
+          ? error.message
+          : "Could not review this pull request.";
+      setReviewError(message);
+      setFailedReviewUrl(prUrl);
     } finally {
       setReviewing(false);
     }
@@ -194,6 +202,7 @@ export default function ReviewPage({
                 <button className="btn btn-quiet" type="button" onClick={() => navigate({ page: "session", sessionId: session.id })}>Open session</button>
                 <a className="review-github-link" href={session.prUrl} target="_blank" rel="noreferrer">Review PR on GitHub <ArrowUpRight size={15} /></a>
               </div>
+              {failedReviewUrl === session.prUrl && reviewError && <p className="review-card-error" role="alert">{reviewError}</p>}
             </article>
           );
         })}

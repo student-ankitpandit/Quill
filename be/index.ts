@@ -327,14 +327,23 @@ app.post("/api/reviews/pull-request", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "Enter a valid GitHub pull request URL." });
   }
 
+  const reviewStartedAt = Date.now();
+  let reviewStage: "github" | "ai" = "github";
+  const reviewDeadline = AbortSignal.timeout(75_000);
   try {
     const octokit = await getInstallationOctokit(req.installationId);
-    const { data: pull } = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+    const { data: pull } = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      request: { timeout: 30_000, signal: reviewDeadline },
+    });
     const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
       owner,
       repo,
       pull_number: pullNumber,
       per_page: 100,
+      request: { timeout: 30_000, signal: reviewDeadline },
     });
     const reviewableFiles = files.filter((file) => typeof file.patch === "string");
     const omittedFiles = files.filter((file) => typeof file.patch !== "string").map((file) => file.filename);
@@ -357,7 +366,13 @@ app.post("/api/reviews/pull-request", authMiddleware, async (req, res) => {
         details: "Credential-like content was detected. Quill withholds its value; rotate it if it is real and remove it from the pull request.",
       };
     });
-    const review = await reviewPullRequestDiff(redactExposedSecrets(diff));
+    // Bound the entire review so GitHub pagination or the model cannot leave the
+    // UI waiting indefinitely. The same deadline covers both phases.
+    reviewStage = "ai";
+    const review = await reviewPullRequestDiff(
+      redactExposedSecrets(diff),
+      reviewDeadline,
+    );
     const findings = [...secretFindings, ...review.findings];
     const verdict = findings.some((finding) => finding.severity === "critical" || finding.severity === "high")
       ? "needs_attention"
@@ -389,10 +404,35 @@ app.post("/api/reviews/pull-request", authMiddleware, async (req, res) => {
       omittedFiles,
     });
   } catch (error) {
-    console.error("Could not review pull request:", error);
-    const status = (error as { status?: number })?.status;
+    const failure = error as { status?: number; code?: string; name?: string; message?: string };
+    console.error("Could not review pull request:", {
+      owner,
+      repo,
+      pullNumber,
+      durationMs: Date.now() - reviewStartedAt,
+      status: failure.status,
+      code: failure.code,
+      name: failure.name,
+      message: failure.message,
+    });
+    const status = failure.status;
     if (status === 404) {
       return res.status(404).json({ error: "GitHub could not find this pull request or the installed app cannot access it." });
+    }
+    if (reviewStage === "github" && (status === 401 || status === 403)) {
+      return res.status(403).json({ error: "The connected GitHub App cannot access this pull request. Check that the app is installed for this repository and has Pull requests read access." });
+    }
+    if (reviewStage === "ai" && (status === 401 || status === 403)) {
+      return res.status(503).json({ error: "Quill’s AI review service is not authorized. Please contact support or try again later." });
+    }
+    if (status === 429) {
+      return res.status(503).json({ error: reviewStage === "github" ? "GitHub is rate limiting requests. Please retry in a few minutes." : "The AI review service is busy. Please try again in a minute." });
+    }
+    if (failure.name === "TimeoutError" || failure.name === "AbortError" || failure.code === "ETIMEDOUT" || failure.code === "APIConnectionTimeoutError") {
+      const message = reviewStage === "github"
+        ? "GitHub took too long to return the pull request diff. Please retry."
+        : "The AI review took too long to respond. Please retry; larger pull requests may need to be split into smaller changes.";
+      return res.status(504).json({ error: message });
     }
     return res.status(502).json({ error: "Quill could not complete the pull request review. Please try again." });
   }
