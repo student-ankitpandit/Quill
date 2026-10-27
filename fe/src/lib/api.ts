@@ -16,7 +16,19 @@ function getApiBaseUrl(): string {
     typeof process !== "undefined"
       ? process.env.BUN_PUBLIC_API_URL?.trim()
       : undefined;
-  return (configuredUrl || PRODUCTION_API_URL).replace(/\/+$/, "");
+  if (!configuredUrl) return PRODUCTION_API_URL;
+
+  // A stale Vercel/Bun build variable must never make a public deployment
+  // send users to their own machine. Keep localhost API URLs local-only.
+  try {
+    const configured = new URL(configuredUrl);
+    const pointsToLocalhost =
+      LOCAL_HOSTNAMES.has(configured.hostname) ||
+      configured.hostname.endsWith(".localhost");
+    return (pointsToLocalhost ? PRODUCTION_API_URL : configured.origin).replace(/\/+$/, "");
+  } catch {
+    return PRODUCTION_API_URL;
+  }
 }
 
 export const API_BASE_URL = getApiBaseUrl();

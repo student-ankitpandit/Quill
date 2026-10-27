@@ -67,10 +67,38 @@ const razorpay = new Razorpay({
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 
+const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+const isLocalHostname = (hostname: string) =>
+  hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]" || hostname.endsWith(".localhost");
+
+function publicOrigin(configuredValue: string | undefined, fallback: string): string {
+  const candidate = configuredValue?.trim();
+  if (!candidate) return fallback;
+  try {
+    const parsed = new URL(candidate);
+    // Ignore accidentally copied local URLs in production environment
+    // settings instead of sending real users back to their own computer.
+    if (isProduction && isLocalHostname(parsed.hostname)) return fallback;
+    return parsed.origin;
+  } catch {
+    return fallback;
+  }
+}
+
+const renderBackendOrigin = publicOrigin(
+  process.env.RENDER_EXTERNAL_URL,
+  "https://quill-c05l.onrender.com",
+);
+const configuredBackendOrigin = publicOrigin(
+  process.env.BACKEND_URL,
+  isProduction ? renderBackendOrigin : "http://localhost:3001",
+);
+const configuredFrontendOrigin = publicOrigin(
+  process.env.FRONTEND_URL,
+  isProduction ? "https://quill-si.vercel.app" : "http://localhost:3000",
+);
+
 // CORS for the deployed frontend and local frontend development server.
-const configuredFrontendOrigin = (process.env.FRONTEND_URL || "http://localhost:3000")
-  .trim()
-  .replace(/\/+$/, "");
 const allowedFrontendOrigins = new Set([
   configuredFrontendOrigin,
 ]);
@@ -121,10 +149,7 @@ app.get("/api/auth/github", (req, res) => {
     typeof req.query.installation_id === "string"
       ? req.query.installation_id
       : "";
-  const backendUrl = (process.env.BACKEND_URL || "http://localhost:3001")
-    .trim()
-    .replace(/\/+$/, "");
-  const redirectUri = `${backendUrl}/api/auth/github/callback`;
+  const redirectUri = `${configuredBackendOrigin}/api/auth/github/callback`;
   // GitHub OAuth expects a space-delimited scope list. Commas are not
   // separators here, so requesting multiple scopes this way can silently
   // leave user:email unavailable to /user/emails.
@@ -138,7 +163,7 @@ app.get("/api/auth/github", (req, res) => {
 
 app.get("/api/auth/github/callback", async (req, res) => {
   const { code, installation_id, setup_action, state } = req.query;
-  const feOrigin = process.env.FRONTEND_URL || "http://localhost:3000";
+  const feOrigin = configuredFrontendOrigin;
 
   // GitHub sends the post-installation redirect here with `installation_id`
   // and `setup_action` but WITHOUT an OAuth `code`. Handle that first so we
