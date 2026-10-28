@@ -330,7 +330,7 @@ Check `E2B_API_KEY` and `E2B_TEMPLATE`, verify that the template exists in the c
 - Review generated changes and pull requests before merging. Quill does not merge a pull request without the user's explicit approval.
 - The AI review is an aid to human review, not a guarantee that code is safe, correct, or free of vulnerabilities.
 
-## Contributing Guidelines
+## Contribution Guidelines
 
 Contributions that improve Quill's reliability, security, accessibility, documentation, or user experience are welcome.
 
