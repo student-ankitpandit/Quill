@@ -110,6 +110,7 @@
 .quill-home .window-side-link,
 .quill-home .agent-line p { color: #6c7581; }
 .quill-home .window-side-label,
+.quill-home .window-sidebar-sessions-label,
 .quill-home .chat-date { color: #89929d; }
 .quill-home .window-side-link.selected { background: #edf0f4; }
 .quill-home .window-side-link svg,
@@ -234,6 +235,7 @@
 .quill-home .mini-mark { width: 17px; height: 17px; color: #ff891f; }
 .quill-home .window-new-session { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 23px; margin-bottom: 12px; border-radius: 5px; color: #fff; background: #f58220; font-size: 7px; font-weight: 700; }
 .quill-home .window-side-label { padding: 0 5px 7px; color: #7c8794; font-size: 6px; letter-spacing: .09em; }
+.quill-home .window-sidebar-sessions-label { padding: 26px 5px 12px; color: #7c8794; font-size: 7px; font-weight: 750; letter-spacing: .1em; }
 .quill-home .window-session-list { display: grid; gap: 4px; }
 .quill-home .window-session-item { min-width: 0; display: flex; align-items: flex-start; gap: 5px; padding: 6px 5px; border-radius: 5px; color: #5e6976; }
 .quill-home .window-session-item.selected { background: #e9edf2; color: #26303b; }
@@ -313,6 +315,7 @@
 .quill-home .window-tool-link strong { color: #f1f1f3; }
 .quill-home .window-new-session { color: #17110a; background: #ff8a1f; }
 .quill-home .window-side-label,
+.quill-home .window-sidebar-sessions-label,
 .quill-home .window-tools-title,
 .quill-home .window-session-heading small,
 .quill-home .window-tool-link small { color: #85858b; }

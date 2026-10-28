@@ -175,7 +175,7 @@ export function LandingPage() {
                 <div className="window-action">
                   <GitPullRequest size={12} /> Review
                 </div>
-                <div className="window-side-label">SESSIONS</div>
+                <div className="window-sidebar-sessions-label">SESSIONS</div>
                 <div className="window-session-list">
                   <div className="window-session-item selected">
                     <i className="session-status-dot done" />
