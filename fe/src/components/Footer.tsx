@@ -19,7 +19,7 @@ export function SiteFooter() {
               <span className="site-brand-mark"><QuillMark size={16} /></span>
               <span>quill</span>
             </a>
-            <p>Coding is easy, Designing systems is what relevant.</p>
+            <p>Coding is easy, Designing systems is what relevant now.</p>
           </div>
 
           <nav className="site-footer-links" aria-label="Policies">
