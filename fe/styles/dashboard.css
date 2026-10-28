@@ -137,6 +137,9 @@ a {
 .nav-item[aria-current="true"] {
   background: var(--raise);
 }
+.sidebar > .sidebar-action + .sidebar-action {
+  margin-top: -8px;
+}
 .session-text {
   display: flex;
   flex-direction: column;

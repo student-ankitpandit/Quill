@@ -10,6 +10,7 @@ import {
   Files,
   GitBranch,
   Github,
+  GitPullRequest,
   Layers3,
   MessageCircle,
   Plus,
@@ -168,30 +169,26 @@ export function LandingPage() {
                   </span>
                   quill
                 </div>
-                <div className="window-new-session">
+                <div className="window-action">
                   <Plus size={12} /> New session
+                </div>
+                <div className="window-action">
+                  <GitPullRequest size={12} /> Review
                 </div>
                 <div className="window-side-label">SESSIONS</div>
                 <div className="window-session-list">
                   <div className="window-session-item selected">
-                    <i className="session-status-dot" />
+                    <i className="session-status-dot done" />
                     <span>
-                      <strong>hi</strong>
-                      <small>student-ankitpandit/bmo-redis</small>
+                      <strong>Fix cache expiry bug</strong>
+                      <small>acme/redis-client</small>
                     </span>
                   </div>
                   <div className="window-session-item">
                     <i className="session-status-dot done" />
                     <span>
-                      <strong>Create a README.md file</strong>
-                      <small>student-ankitpandit/bmo-redis</small>
-                    </span>
-                  </div>
-                  <div className="window-session-item">
-                    <i className="session-status-dot" />
-                    <span>
-                      <strong>Fix repository logic</strong>
-                      <small>student-ankitpandit/bmo-redis</small>
+                      <strong>Add TTL regression test</strong>
+                      <small>acme/redis-client</small>
                     </span>
                   </div>
                 </div>
@@ -204,15 +201,15 @@ export function LandingPage() {
                   <div className="window-session-heading">
                     <ArrowLeft size={13} />
                     <span>
-                      <strong>hi</strong>
-                      <small>student-ankitpandit/bmo-redis</small>
+                      <strong>Fix cache expiry bug</strong>
+                      <small>acme/redis-client</small>
                     </span>
-                    <span className="window-state-pill"><i /> Done</span>
+                    <span className="window-state-pill"><i /> PR ready</span>
                   </div>
                 </header>
                 <div className="window-chat">
                   <div className="user-bubble">
-                    hi
+                    Fix the Redis cache expiry bug, add a regression test, and open a PR.
                   </div>
                   <div className="agent-line">
                     <span className="agent-avatar">
@@ -221,22 +218,34 @@ export function LandingPage() {
                     <div>
                       <strong>quill</strong>
                       <p>
-                        Hi! How can I help you today? Are you working on the
-                        bmo-redis repo or do you have another question in mind?
+                        The expiry time was calculated but not applied on writes. I fixed the store call and added a regression test.
                       </p>
                     </div>
                   </div>
-                  <div className="agent-line final-agent">
-                    <span className="agent-avatar done">
-                      <Check size={12} />
-                    </span>
-                    <p>No new GitHub commit was created or pushed. The workspace has no changes ahead of main.</p>
+                  <div className="work-card">
+                    <div className="work-card-head">
+                      <span className="work-pulse" />
+                      Updated <code>cache/client.go</code>
+                    </div>
+                    <div className="code-lines">
+                      <span><b>35</b> expiresAt := time.Now().Add(ttl)</span>
+                      <span className="added"><b>36</b> return c.store.Set(key, value, expiresAt)</span>
+                    </div>
                   </div>
-                  <div className="window-activity">Activity log · 10s span · 2 items</div>
+                  <div className="agent-line final-agent">
+                    <span className="agent-avatar done"><Check size={12} /></span>
+                    <p>Tests passed <span className="preview-commit">· commit 8d3a1f pushed</span></p>
+                  </div>
+                  <div className="preview-pr-card">
+                    <GitBranch size={12} />
+                    <span><strong>PR #42 opened</strong><small>fix/cache-expiry → main</small></span>
+                    <ArrowUpRight size={12} />
+                  </div>
+                  <div className="window-activity">Activity · 6 steps · just now</div>
                   <div className="window-composer">
                     <span className="composer-placeholder">Ask Quill a question or describe a change</span>
                     <div className="composer-footer">
-                      <small>Enter to send · Shift+Enter for a new line</small>
+                      <small>Ask a follow-up…</small>
                       <span className="composer-send"><ArrowUp size={13} /></span>
                     </div>
                   </div>
