@@ -242,6 +242,7 @@ export function LandingPage() {
                     <ArrowUpRight size={12} />
                   </div>
                   <div className="window-activity">Activity · 6 steps · just now</div>
+                  <div className="window-chat-spacer" />
                   <div className="window-composer">
                     <span className="composer-placeholder">Ask Quill a question or describe a change</span>
                     <div className="composer-footer">

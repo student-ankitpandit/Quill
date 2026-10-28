@@ -58,7 +58,7 @@
 .window-slash { color: #555a60; }
 .window-live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: #a8abae; font-size: 9px; }
 .window-live i, .green-dot { width: 6px; height: 6px; border-radius: 50%; background: #42ce91; box-shadow: 0 0 9px rgba(66,206,145,.6); }
-.window-body { min-height: 470px; display: grid; grid-template-columns: 148px minmax(0, 1fr) 150px; }
+.window-body { min-height: 460px; display: grid; grid-template-columns: 148px minmax(0, 1fr) 150px; }
 .window-app-sidebar { min-width: 0; display: flex; flex-direction: column; padding: 13px 7px 10px; border-right: 1px solid rgba(255,255,255,.065); background: #121416; }
 .window-app-brand { display: flex; align-items: center; gap: 6px; padding: 0 5px; margin-bottom: 14px; color: #ededeb; font-size: 10px; font-weight: 750; }
 .window-action { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border-radius: 6px; color: #e5e5e3; font-size: 9px; font-weight: 600; }
@@ -113,8 +113,9 @@
 .preview-pr-card strong, .preview-pr-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preview-pr-card strong { font-size: 7px; font-weight: 650; }
 .preview-pr-card small { margin-top: 2px; color: #899994; font-size: 6.5px; }
-.window-activity { margin: 0 0 60px; padding: 6px 8px; border: 1px solid rgba(255,255,255,.09); border-radius: 6px; color: #898e93; font-size: 6.5px; }
-.window-composer { min-height: 45px; display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 5px; padding: 6px 7px 5px 9px; margin-top: auto; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; color: #858a90; font-size: 7px; }
+.window-activity { margin: 0 0 8px; padding: 6px 8px; border: 1px solid rgba(255,255,255,.09); border-radius: 6px; color: #898e93; font-size: 6.5px; }
+.window-chat-spacer { flex: none; height: 25px; }
+.window-composer { min-height: 45px; display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 5px; padding: 6px 7px 5px 9px; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; color: #858a90; font-size: 7px; }
 .composer-placeholder { color: #91969c; }
 .composer-footer { display: flex; align-items: center; justify-content: space-between; color: #747a80; }
 .composer-footer small { font-size: 6px; }
