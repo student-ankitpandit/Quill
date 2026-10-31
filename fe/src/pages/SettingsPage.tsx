@@ -149,7 +149,7 @@ export default function Settings() {
       return <>
         <div className="settings-overview-grid">
           <article className="settings-summary-card"><span>Current plan</span><strong>{usageLoading ? "Loading…" : planName}</strong><button type="button" onClick={() => chooseSection("Plan & billing")}>View plan <ArrowRight size={14} /></button></article>
-          <article className="settings-summary-card"><span>Agent runs remaining</span><strong>{usageLoading ? "Loading…" : usage?.active ? `${usage.remaining} / ${usage.limit}` : "—"}</strong><button type="button" onClick={() => chooseSection("Usage")}>View usage <ArrowRight size={14} /></button></article>
+          <article className="settings-summary-card"><span>Credits remaining</span><strong>{usageLoading ? "Loading…" : usage?.active ? `${usage.remaining} / ${usage.limit}` : "—"}</strong><button type="button" onClick={() => chooseSection("Usage")}>View usage <ArrowRight size={14} /></button></article>
           <article className="settings-summary-card"><span>GitHub connection</span><strong className="settings-connection-value"><i className={githubConnected ? "is-connected" : ""} />{githubConnected ? "Connected" : "Not connected"}</strong><button type="button" onClick={() => chooseSection("Connections")}>Manage connection <ArrowRight size={14} /></button></article>
         </div>
         <h2 className="settings-section-heading">Account overview</h2>
@@ -165,11 +165,12 @@ export default function Settings() {
       return <>
         <div className="settings-card settings-usage-card">
           <div className="settings-card-body">
-            <div className="settings-usage-heading"><div><h2>{usage?.active ? usage.plan === "free" ? "Free trial usage" : `${planName} plan usage` : "No active plan"}</h2><p>{usage?.active && periodEnd ? `Current period ends ${periodEnd}` : usage?.plan === "free" ? "Your five free agent runs are a one-time trial." : "Choose a plan to start agent runs."}</p></div><strong>{usage?.active ? `${usage.used} / ${usage.limit}` : "—"}</strong></div>
-            {usage?.active && <><div className="settings-usage-track" role="progressbar" aria-label="Agent run usage" aria-valuemin={0} aria-valuemax={usage.limit} aria-valuenow={usage.used}><span style={{ width: `${usagePercent}%` }} /></div><div className="settings-usage-foot"><span>{usage.remaining} runs remaining</span><span>{usagePercent}% used</span></div></>}
+            <div className="settings-usage-heading"><div><h2>{usage?.active ? usage.plan === "free" ? "Free trial usage" : `${planName} plan usage` : "No active plan"}</h2><p>{usage?.active && periodEnd ? `Current period ends ${periodEnd}` : usage?.plan === "free" ? "Your five free credits are a one-time trial." : "Choose a plan to get credits."}</p></div><strong>{usage?.active ? `${usage.used} / ${usage.limit}` : "—"}</strong></div>
+            {usage?.active && <><div className="settings-usage-track" role="progressbar" aria-label="Credit usage" aria-valuemin={0} aria-valuemax={usage.limit} aria-valuenow={usage.used}><span style={{ width: `${usagePercent}%` }} /></div><div className="settings-usage-foot"><span>{usage.remaining} credits remaining</span><span>{usagePercent}% used</span></div></>}
           </div>
         </div>
-        <p className="settings-helper-copy">{usage?.plan === "free" ? "Free trial usage is limited to five agent runs total. Paid plan usage resets with each 30-day period." : "Usage counts agent runs during your current 30-day plan period. Follow-up messages within an active run don’t start a separate run."}</p>
+        <p className="settings-helper-copy">Each session starts at 1 credit. Every 2 main-chat follow-ups add 1 credit. Internal model and tool calls don’t count. {usage?.plan === "free" ? "The free trial includes five credits total." : "Paid plan credits reset with each 30-day period."}</p>
+        {usage?.active && usage.remaining === 0 && <a className="btn btn-quiet settings-primary-link" href="/#pricing">Choose a plan and pay manually to add credits <ArrowRight size={15} /></a>}
         {!usage?.active && <a className="btn btn-quiet settings-primary-link" href="/#pricing">Explore plans <ArrowRight size={15} /></a>}
         {loadError && <p role="alert" className="profile-error">{loadError}</p>}
       </>;
@@ -181,10 +182,10 @@ export default function Settings() {
           <div className="settings-card-heading"><div className="settings-provider-icon"><CreditCard size={20} /></div><div><h2>{planName}</h2><p>{usage?.plan === "free" ? "Free trial access" : usage?.active ? "Active subscription" : "Subscription and payment details"}</p></div><span className={`settings-plan-status${usage?.active && usage.plan !== "free" ? " active" : ""}`}>{usage?.plan === "free" ? "Free" : usage?.active ? "Active" : "No active plan"}</span></div>
           <div className="settings-card-body settings-billing-summary">
             {usage?.plan === "free"
-              ? <><p>Your free trial includes five agent runs total. Upgrade any time for a larger usage allowance.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">Explore paid plans <ArrowRight size={15} /></a></>
+              ? <><p>Your free trial includes five credits total. Upgrade any time for a larger usage allowance.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">Explore paid plans <ArrowRight size={15} /></a></>
               : usage?.active
-                ? <><p>Your {planName} plan includes {usage.limit} agent runs for this 30-day period.</p><div className="settings-billing-meta"><span>Period ends</span><strong>{periodEnd}</strong></div><p className="settings-helper-copy">This is a one-time payment plan. Renew manually when you’re ready for another period.</p></>
-                : <><p>You don’t have an active plan yet. Choose a plan to unlock agent runs and repository work.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">View plans <ArrowRight size={15} /></a></>}
+                ? <><p>Your {planName} plan includes {usage.limit} credits for this 30-day period.</p><div className="settings-billing-meta"><span>Period ends</span><strong>{periodEnd}</strong></div><p className="settings-helper-copy">This is a one-time payment plan. Renew manually when you’re ready for another period.</p></>
+                : <><p>You don’t have an active plan yet. Choose a plan to unlock credits and repository work.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">View plans <ArrowRight size={15} /></a></>}
           </div>
         </div>
         <h2 className="settings-section-heading">Payment history</h2>
@@ -207,7 +208,7 @@ export default function Settings() {
 
   const description: Record<Section, string> = {
     Overview: "A quick view of your Quill account and workspace.",
-    Usage: "Track agent runs included in your current plan.",
+    Usage: "Track credits included in your current plan.",
     "Plan & billing": "Manage your plan and review payment activity.",
     Account: "Your profile details from the GitHub account connected to Quill.",
     Connections: "Manage the services connected to your Quill workspace.",

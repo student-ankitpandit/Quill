@@ -25,7 +25,9 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   answerSideChat,
   answerPullRequestQuestion,
+  AVAILABLE_MODELS,
   classifyUserIntent,
+  MODEL_DISPLAY_NAME,
   findExposedSecrets,
   publishChanges,
   queueAgentMessage,
@@ -52,7 +54,7 @@ import { migrateLegacyJsonData } from "./legacy-data-migration";
 import { prisma } from "./db";
 import { quoteShell, workspacePath, assertWorkspacePathInside, signUserToken, resolveInstallationId } from "./lib"
 import Razorpay from "razorpay";
-import { getPlanUsage, getUsageLimitError } from "./billing";
+import { getPlanUsage, getUsageLimitError, nextFollowUpConsumesCredit } from "./billing";
 
 const REPO_NAME = /^[\w.-]+\/[\w.-]+$/;
 const REPO_DIR = "/home/user/repo";
@@ -296,6 +298,10 @@ app.get("/api/payments/config", (_req, res) => {
     return res.status(503).json({ error: "Razorpay is not configured on the backend." });
   }
   return res.json({ keyId });
+});
+
+app.get("/api/model", (_req, res) => {
+  return res.json({ name: MODEL_DISPLAY_NAME, models: AVAILABLE_MODELS });
 });
 
 app.get("/api/billing/usage", authMiddleware, async (req, res) => {
@@ -1044,8 +1050,6 @@ app.post("/api/sessions/:sessionId/run", async (req, res) => {
     return res.status(409).json({ error: "Session is already running" });
   }
   if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
-  const usageLimitError = await getUsageLimitError(req.userId);
-  if (usageLimitError) return res.status(402).json({ error: usageLimitError });
 
   setStatus(session, "running");
   await saveSession(session);
@@ -1453,8 +1457,6 @@ app.post("/api/app/sessions/:sessionId/side-chat", async (req, res) => {
   if (question.length > 10_000)
     return res.status(400).json({ error: "Message is too long." });
   if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
-  const usageLimitError = await getUsageLimitError(req.userId);
-  if (usageLimitError) return res.status(402).json({ error: usageLimitError });
   try {
     const now = new Date().toISOString();
     await appendSideChat(session.id, [
@@ -1507,6 +1509,18 @@ app.post("/api/sessions/:sessionId/messages", async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
+    const queuedFollowUps = await prisma.queuedAgentMessage.count({
+      where: { sessionId: session.id, consumedAt: null },
+    });
+    const existingUserRequests =
+      session.messages.filter((item: any) => item.role === "user").length +
+      queuedFollowUps;
+    if (nextFollowUpConsumesCredit(existingUserRequests)) {
+      if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
+      const usageLimitError = await getUsageLimitError(req.userId);
+      if (usageLimitError) return res.status(402).json({ error: usageLimitError });
+    }
+
     if (session.status === "running") {
       await queueAgentMessage(session.id, message);
       publish(session.id, {
@@ -1522,8 +1536,6 @@ app.post("/api/sessions/:sessionId/messages", async (req, res) => {
     }
 
     if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
-    const usageLimitError = await getUsageLimitError(req.userId);
-    if (usageLimitError) return res.status(402).json({ error: usageLimitError });
 
     if (session.pendingToolCallId) {
       session.messages.push({
@@ -1610,18 +1622,35 @@ app.get("/api/session/:sessionId/stream", async (req, res) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
+  // Subscribe before sending the initial snapshot so a fast agent completion
+  // cannot publish its final status in the gap between snapshot and subscribe.
+  let initializing = true;
+  const pendingEvents: Array<{ type: string; data: unknown; id?: number }> = [];
+  const unsubscribe = subscribe(session.id, (event) => {
+    if (initializing) pendingEvents.push(event);
+    else send(event.type, event.data, event.id);
+  });
+
+  // The first read happens before subscription and can race a quick completion.
+  // Refresh after subscribing; any status changes during this read are buffered.
+  const snapshot = await getSession(session.id);
+  if (!snapshot) {
+    unsubscribe();
+    return res.end();
+  }
+
   const lastId = Number(req.header("last-event-id"));
   const start = Number.isInteger(lastId) ? lastId + 1 : 0;
-  session.logs
+  snapshot.logs
     .slice(start)
     .forEach((entry, i) => send("log", entry, start + i));
   send("status", {
-    status: session.status,
-    prUrl: session.prUrl,
-    branch: session.branch,
+    status: snapshot.status,
+    prUrl: snapshot.prUrl,
+    branch: snapshot.branch,
   });
-
-  const unsubscribe = subscribe(session.id, (e) => send(e.type, e.data, e.id));
+  initializing = false;
+  pendingEvents.forEach((event) => send(event.type, event.data, event.id));
 
   const heartbeat = setInterval(() => res.write(": ping\n\n"), 25_000);
 

@@ -18,7 +18,16 @@ function getOpenAI() {
   return _openai;
 }
 
-const MODEL = "gpt-5";
+const MODEL = process.env.OPENAI_MODEL?.trim() || "gpt-5";
+export const MODEL_DISPLAY_NAME = MODEL.split(/[-_/]+/)
+  .filter(Boolean)
+  .map((part) => {
+    if (/^gpt$/i.test(part)) return "GPT";
+    if (/^\d+(?:\.\d+)*$/.test(part)) return part;
+    return part.charAt(0).toUpperCase() + part.slice(1);
+  })
+  .join(" ");
+export const AVAILABLE_MODELS = [{ id: MODEL, name: MODEL_DISPLAY_NAME }];
 const MAX_ITERATIONS = 30;
 export const REPO_DIR = "/home/user/repo";
 
@@ -61,6 +70,7 @@ export type UserIntent = "conversation" | "informational" | "repository_task";
 
 const SYSTEM_PROMPT =
   "You are an agent that can answer questions and make requested code changes. " +
+  `When asked which AI model is running, say Quill is currently using ${MODEL_DISPLAY_NAME} (configured model ID: ${MODEL}). Do not guess or claim a different model or version. ` +
   "For a greeting, acknowledgement, social message, or other casual message that does not ask for repository work, reply conversationally and ask how you can help if appropriate. Do not inspect or change the repository, claim repository work was done, or mention commits, pushes, or pull requests for these messages. " +
   "For a straightforward informational question, answer it directly in plain language. Do not call tools, inspect or change files, start services, or create a pull request for an informational question. " +
   "For repository-specific questions, use the repository name and conversation context; be clear about uncertainty instead of inventing details you cannot know without inspection. " +
@@ -605,7 +615,8 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
     let sandbox: Sandbox | null = null;
     let summary = "";
     let finished = false;
-    let finalTurnIsInformational = false;
+    let finalTurnIsRepositoryTask = false;
+    let repositoryToolsExecuted = false;
     let classifiedUserText = session.taskIntent ? session.task : "";
     let userIntent: UserIntent = session.taskIntent ?? "repository_task";
 
@@ -642,7 +653,7 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
         userIntent = await classifyUserIntent(userText);
         classifiedUserText = userText;
       }
-      finalTurnIsInformational = userIntent !== "repository_task";
+      finalTurnIsRepositoryTask = userIntent === "repository_task";
 
       if (userIntent === "conversation") {
         const queuedMessages = await takeQueuedMessages(session.id);
@@ -676,13 +687,13 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
               },
               ...session.messages,
             ],
-            ...(finalTurnIsInformational
-              ? {}
-              : {
+            ...(finalTurnIsRepositoryTask
+              ? {
                   tools,
                   tool_choice: "auto" as const,
                   parallel_tool_calls: false,
-                }),
+                }
+              : {}),
           },
           { signal },
         );
@@ -765,6 +776,7 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
         ),
       );
       sandbox ??= await connectSessionSandbox(session.sandboxId);
+      repositoryToolsExecuted = true;
       const output = redactSensitiveText(
         await executeTool(sandbox, toolCall.function.name, args, signal),
       );
@@ -796,7 +808,11 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
       return runAgent(session, signal);
     }
 
-    if (!finalTurnIsInformational) {
+    // A broad request such as "can you fix an issue?" can be classified as a
+    // repository task even when the model needs more details and only asks a
+    // follow-up question. Do not start GitHub publication unless it actually
+    // used repository tools during this turn.
+    if (finalTurnIsRepositoryTask && repositoryToolsExecuted) {
       if (signal.aborted) throw signal.reason;
       if (summary.trim()) {
         const progress =

@@ -479,11 +479,11 @@ export function LandingPage() {
               <span className="pricing-period">/ free trial</span>
             </div>
             <div className="pricing-price-note">
-              No payment required · 5 agent runs total
+              No payment required · 5 credits total
             </div>
             <div className="pricing-divider" />
             <ul>
-              <li><Check size={15} />5 agent runs to try Quill</li>
+              <li><Check size={15} />5 credits to try Quill</li>
               <li><Check size={15} />Repository questions and code changes</li>
               <li><Check size={15} />Reviewable workspace changes</li>
             </ul>
@@ -507,7 +507,7 @@ export function LandingPage() {
             <ul>
               <li>
                 <Check size={15} />
-                50 agent runs per 30 days
+                50 credits per 30 days
               </li>
               <li>
                 <Check size={15} />
@@ -562,7 +562,7 @@ export function LandingPage() {
               </li>
               <li>
                 <Check size={15} />
-                100 agent runs per 30 days
+                100 credits per 30 days
               </li>
             </ul>
             {razorpayOrder && selectedPlan === "pro" ? (

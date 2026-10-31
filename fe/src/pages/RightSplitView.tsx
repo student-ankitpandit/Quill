@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowUp,
   Check,
+  ChevronDown,
   ChevronRight,
   FileCode2,
   Files,
@@ -24,6 +25,7 @@ import {
 import { navigate } from "@/lib/router";
 import {
   getSession,
+  getConfiguredModelName,
   getSessionChanges,
   getSideChat,
   listWorkspaceFiles,
@@ -74,6 +76,8 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState<SessionStatus>("ready");
+  const [modelName, setModelName] = useState("GPT 5");
+  const [modelOptions, setModelOptions] = useState<Array<{ id: string; name: string }>>([{ id: "gpt-5", name: "GPT 5" }]);
   const [panel, setPanel] = useState<WorkspacePanel | null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -110,6 +114,15 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
   const pendingMessagesRef = useRef<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const missingAnswerRecoveryRef = useRef(false);
   const stopRequestedRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getConfiguredModelName().then(({ name, models }) => {
+      if (!cancelled && name) setModelName(name);
+      if (!cancelled && models?.length) setModelOptions(models);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -345,15 +358,37 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
     setSending(true);
     stopRequestedRef.current = false;
     setError("");
+    setMessage("");
+    setStatus("running");
+    setSession((current) => current
+      ? { ...current, messages: appendIfNew(current.messages ?? [], { role: "user", content }) }
+      : current);
+    const delivery = sendMessage(sessionId, content);
+    // Keep the composer usable while the server durably queues the message.
+    setSending(false);
     try {
-      await sendMessage(sessionId, content);
-      setMessage("");
-      setStatus("running");
-      setSession((current) => current
-        ? { ...current, messages: appendIfNew(current.messages ?? [], { role: "user", content }) }
-        : current);
+      await delivery;
       composerRef.current?.focus();
     } catch (e) {
+      setSession((current) => {
+        if (!current) return current;
+        const messages = [...(current.messages ?? [])];
+        let optimisticIndex = -1;
+        for (let index = messages.length - 1; index >= 0; index -= 1) {
+          const item = messages[index] as any;
+          if (item.role === "user" && item.content === content) {
+            optimisticIndex = index;
+            break;
+          }
+        }
+        if (optimisticIndex !== -1) messages.splice(optimisticIndex, 1);
+        return { ...current, messages };
+      });
+      setMessage((current) => current || content);
+      void getSession(sessionId).then((latest) => {
+        setStatus(latest.status);
+        setSession((current) => current ? { ...current, status: latest.status } : current);
+      }).catch(() => {});
       setError(e instanceof Error ? e.message : "Message could not be sent.");
     } finally {
       setSending(false);
@@ -499,7 +534,7 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
             <div className="qw-composer-wrap shrink-0 px-5 pb-5 sm:px-10">
               <form onSubmit={(event) => { event.preventDefault(); void handleSend(); }} className={`qw-composer w-full rounded-2xl border border-white/15 bg-[#191919] p-3 shadow-2xl shadow-black/20 focus-within:border-white/25 ${loading ? "opacity-60" : ""}`}>
                 <textarea ref={composerRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSend(); } }} rows={2} placeholder={loading ? "Switching session…" : "Ask Quill a question or describe a change"} className="max-h-40 min-h-14 w-full resize-y bg-transparent px-2 py-1 text-sm leading-6 text-neutral-100 outline-none placeholder:text-neutral-500" disabled={sending || loading} />
-                <div className="flex items-center justify-between px-1 pt-2"><span className="text-xs text-neutral-600">{loading ? "Loading conversation…" : "Enter to send · Shift+Enter for a new line"}</span><div className="flex items-center gap-2">{status === "running" && <button type="button" onClick={handleStop} disabled={loading} className="qw-stop-button" aria-label="Stop agent" title="Stop agent"><Square size={15} fill="currentColor" strokeWidth={1.5} /></button>}<button type="submit" disabled={loading || !message.trim() || sending} className="qw-send-button" aria-label="Send message" title="Send message">{sending || loading ? <LoaderCircle size={16} className="animate-spin" /> : <ArrowUp size={20} strokeWidth={2} />}</button></div></div>
+                <div className="flex items-center justify-between px-1 pt-2"><span className="text-xs text-neutral-600">{loading ? "Loading conversation…" : "Enter to send · Shift+Enter for a new line"}</span><div className="flex items-center gap-2"><label className="qw-model-picker flex cursor-pointer items-center gap-0.5"><select aria-label="AI model" title="Active AI model" value={modelOptions.find((option) => option.name === modelName)?.id ?? modelOptions[0]?.id} onChange={(event) => { const selected = modelOptions.find((option) => option.id === event.target.value); if (selected) setModelName(selected.name); }} className="qw-model-select max-w-28 cursor-pointer text-xs text-neutral-500 outline-none hover:text-neutral-300 focus:text-neutral-300">{modelOptions.map((option) => <option key={option.id} value={option.id} className="bg-[#191919] text-neutral-200">{option.name}</option>)}</select><ChevronDown size={12} className="shrink-0 text-neutral-500" /></label>{status === "running" && <button type="button" onClick={handleStop} disabled={loading} className="qw-stop-button" aria-label="Stop agent" title="Stop agent"><Square size={15} fill="currentColor" strokeWidth={1.5} /></button>}<button type="submit" disabled={loading || !message.trim() || sending} className="qw-send-button" aria-label="Send message" title="Send message">{sending || loading ? <LoaderCircle size={16} className="animate-spin" /> : <ArrowUp size={20} strokeWidth={2} />}</button></div></div>
               </form>
             </div>
           </section>

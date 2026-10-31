@@ -395,6 +395,26 @@
   font-size: 11px;
 }
 
+.quill-workspace .qw-composer .qw-model-picker {
+  color: #77777e;
+}
+
+.quill-workspace .qw-composer select.qw-model-select {
+  min-width: 0;
+  max-width: 112px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.quill-workspace .qw-composer .qw-model-picker:hover,
+.quill-workspace .qw-composer select.qw-model-select:focus {
+  color: #d4d4d8;
+}
+
 .quill-workspace .qw-composer button[type="submit"] {
   display: grid;
   width: 36px;

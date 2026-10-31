@@ -51,6 +51,10 @@ export async function getRazorpayPublicKey(): Promise<string> {
   return response.keyId;
 }
 
+export async function getConfiguredModelName(): Promise<{ name: string; models: Array<{ id: string; name: string }> }> {
+  return request("/api/model");
+}
+
 export type SessionStatus =
   | "ready"
   | "running"
