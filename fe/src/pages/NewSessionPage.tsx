@@ -245,8 +245,6 @@ export default function NewSession({
               ? <>Free trial · {planUsage.used} of {planUsage.limit} credits used · {planUsage.remaining} remaining{planUsage.remaining === 0 && <> · <a href="/#pricing">Choose a paid plan to add credits</a></>}</>
               : <>{planUsage.plan === "basic" ? "Basic" : "Pro"} plan · {planUsage.used} of {planUsage.limit} monthly credits used · {planUsage.remaining} remaining{planUsage.remaining === 0 && <> · <a href="/#pricing">Choose a plan to add credits</a></>}</>}
       </p>
-      <p className="plan-usage">Each session starts at 1 credit. Every 2 follow-up requests add 1 credit. Internal model and tool calls don’t count.</p>
-
       <div className="composer">
         <textarea
           ref={taskInputRef}
