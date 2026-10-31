@@ -477,7 +477,7 @@ export function RightSplitViewPage({ sessionId }: { sessionId: string }) {
         <div className="qw-content flex min-h-0 flex-1">
           <section className="qw-thread flex min-w-0 flex-1 flex-col">
             <div className="qw-messages min-h-0 flex-1 overflow-y-auto px-5 py-7 sm:px-10">
-              <div className="qw-message-list mx-auto flex max-w-[760px] flex-col gap-7">
+              <div className="qw-message-list mx-auto flex flex-col gap-7">
                 {session.workspaceUnavailable && <div role="status" className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100/80">This session’s sandbox has expired and can’t be resumed. Unpushed changes from that sandbox are unavailable. Start a new session to continue from the repository on GitHub.<button type="button" onClick={() => navigate({ page: "dashboard" })} className="ml-2 font-medium text-orange-300 hover:text-orange-200">New session</button></div>}
                 {session.prUrl && <div role="status" className={`rounded-xl border px-4 py-3 ${session.prMergedAt ? "border-emerald-400/20 bg-emerald-400/[0.06]" : "border-orange-400/20 bg-orange-400/[0.05]"}`}>
                   <p className={`text-sm font-medium ${session.prMergedAt ? "text-emerald-200" : "text-orange-100"}`}>{session.prMergedAt ? `Pull request merged into ${session.prBaseBranch || "main"}` : "Pull request ready for your review"}</p>
