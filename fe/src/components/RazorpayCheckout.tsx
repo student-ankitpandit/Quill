@@ -41,6 +41,7 @@ type RazorpayCheckoutProps = {
   verifyPayment: (response: RazorpayPaymentResponse) => unknown | Promise<unknown>;
   onSuccess?: (result: unknown) => void | Promise<void>;
   onError?: (error: Error) => void;
+  onDismiss?: () => void;
   className?: string;
   autoOpen?: boolean;
 };
@@ -51,6 +52,7 @@ export function RazorpayCheckout({
   verifyPayment,
   onSuccess,
   onError,
+  onDismiss,
   className,
   autoOpen = false,
 }: RazorpayCheckoutProps) {
@@ -105,7 +107,10 @@ export function RazorpayCheckout({
         }
       },
       modal: {
-        ondismiss: () => setIsOpening(false),
+        ondismiss: () => {
+          setIsOpening(false);
+          onDismiss?.();
+        },
       },
     });
 

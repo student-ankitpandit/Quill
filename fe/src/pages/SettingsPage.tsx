@@ -11,15 +11,19 @@ import {
 } from "lucide-react";
 import {
   clearAuth,
+  createRazorpayOrder,
   getBillingHistory,
   getManageInstallUrl,
   getPlanUsage,
   getUserProfile,
   isLoggedIn,
+  verifyRazorpayPayment,
   type BillingHistoryItem,
   type PlanUsage,
   type QuillProfile,
+  type RazorpayOrder,
 } from "@/lib/api";
+import { RazorpayCheckout } from "@/components/RazorpayCheckout";
 import "./SettingsPage.css";
 
 type Section = "Overview" | "Usage" | "Plan & billing" | "Account" | "Connections";
@@ -94,6 +98,10 @@ export default function Settings() {
   const [usageLoading, setUsageLoading] = useState(() => !usageCache);
   const [billingLoading, setBillingLoading] = useState(() => !billingCache);
   const [loadError, setLoadError] = useState("");
+  const [checkout, setCheckout] = useState<{ plan: "basic" | "pro"; order: RazorpayOrder } | null>(null);
+  const [purchaseLoading, setPurchaseLoading] = useState<"basic" | "pro" | null>(null);
+  const [paymentError, setPaymentError] = useState("");
+  const [paymentNotice, setPaymentNotice] = useState("");
   const githubConnected = isLoggedIn();
   const filteredSections = useMemo(() => sections.filter(({ name, keywords }) => `${name} ${keywords}`.toLowerCase().includes(search.trim().toLowerCase())), [search]);
 
@@ -127,6 +135,62 @@ export default function Settings() {
     ? usage.plan === "free" ? "Free" : usage.plan === "basic" ? "Basic" : "Pro"
     : "No active plan";
 
+  const beginPlanPurchase = async (plan: "basic" | "pro") => {
+    setPaymentError("");
+    setPaymentNotice("");
+    setPurchaseLoading(plan);
+    try {
+      const order = await createRazorpayOrder(plan);
+      setCheckout({ plan, order });
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Unable to start Razorpay checkout.");
+    } finally {
+      setPurchaseLoading(null);
+    }
+  };
+
+  const completePlanPurchase = async (result: unknown) => {
+    const verification = result as { verified?: boolean; usage?: PlanUsage };
+    const freshUsage = verification.usage ?? await getPlanUsage();
+    usageCache = { value: freshUsage, fetchedAt: Date.now() };
+    setUsage(freshUsage);
+    setCheckout(null);
+    setPaymentError("");
+    setPaymentNotice(`Payment verified. Your ${freshUsage.plan === "pro" ? "Pro" : "Basic"} plan is active.`);
+
+    billingCache = null;
+    try {
+      const freshBilling = await getBillingHistory();
+      billingCache = { value: freshBilling, fetchedAt: Date.now() };
+      setBilling(freshBilling);
+    } catch {
+      // Payment and plan activation are already confirmed; history can refresh on next visit.
+    }
+  };
+
+  const renderPlanPurchaseAction = (plan: "basic" | "pro", label: string) => {
+    if (checkout?.plan === plan) {
+      return <RazorpayCheckout
+        order={checkout.order}
+        user={{ name: profile?.name, email: profile?.email }}
+        verifyPayment={verifyRazorpayPayment}
+        onSuccess={completePlanPurchase}
+        onError={(error) => { setCheckout(null); setPaymentError(error.message); }}
+        onDismiss={() => setCheckout(null)}
+        autoOpen
+        className="btn btn-quiet settings-primary-link"
+      />;
+    }
+    return <button
+      type="button"
+      className="btn btn-quiet settings-primary-link"
+      onClick={() => void beginPlanPurchase(plan)}
+      disabled={purchaseLoading !== null || checkout !== null}
+    >
+      {purchaseLoading === plan ? "Preparing checkout…" : <>{label} <ArrowRight size={15} /></>}
+    </button>;
+  };
+
   const sectionContent = () => {
     if (section === "Connections") {
       return <div className="settings-card">
@@ -155,7 +219,7 @@ export default function Settings() {
         <h2 className="settings-section-heading">Account overview</h2>
         <div className="settings-card settings-card-body settings-overview-account">
           <div><span className="settings-overview-name">{profile?.name || profile?.login || "Your Quill account"}</span><p>{profile?.email || "Your account and workspace details at a glance."}</p></div>
-          <button type="button" className="btn btn-quiet" onClick={() => chooseSection("Account")}>Manage account <ArrowRight size={14} /></button>
+          <button type="button" className="btn btn-quiet" onClick={() => chooseSection("Account")}>View account <ArrowRight size={14} /></button>
         </div>
         {loadError && <p role="alert" className="profile-error">{loadError}</p>}
       </>;
@@ -182,11 +246,12 @@ export default function Settings() {
           <div className="settings-card-heading"><div className="settings-provider-icon"><CreditCard size={20} /></div><div><h2>{planName}</h2><p>{usage?.plan === "free" ? "Free trial access" : usage?.active ? "Active subscription" : "Subscription and payment details"}</p></div><span className={`settings-plan-status${usage?.active && usage.plan !== "free" ? " active" : ""}`}>{usage?.plan === "free" ? "Free" : usage?.active ? "Active" : "No active plan"}</span></div>
           <div className="settings-card-body settings-billing-summary">
             {usage?.plan === "free"
-              ? <><p>Your free trial includes five credits total. Upgrade any time for a larger usage allowance.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">Explore paid plans <ArrowRight size={15} /></a></>
+              ? <><p>Your free trial includes five credits total. Choose a paid plan when you’re ready to add credits.</p>{renderPlanPurchaseAction("basic", "Choose Basic · ₹799")}{renderPlanPurchaseAction("pro", "Choose Pro · ₹1,599")}</>
               : usage?.active
-                ? <><p>Your {planName} plan includes {usage.limit} credits for this 30-day period.</p><div className="settings-billing-meta"><span>Period ends</span><strong>{periodEnd}</strong></div><p className="settings-helper-copy">This is a one-time payment plan. Renew manually when you’re ready for another period.</p></>
+                ? <><p>Your {planName} plan includes {usage.limit} credits for this 30-day period.</p><div className="settings-billing-meta"><span>Period ends</span><strong>{periodEnd}</strong></div><p className="settings-helper-copy settings-billing-cycle-note">This is a one-time payment plan. Renew manually when you’re ready for another period.</p>{usage.plan === "basic" && <><p className="settings-helper-copy">Upgrading starts a new Pro period. Any unused Basic credits won’t carry over.</p>{renderPlanPurchaseAction("pro", "Upgrade your subscription to the Pro plan")}</>}</>
                 : <><p>You don’t have an active plan yet. Choose a plan to unlock credits and repository work.</p><a className="btn btn-quiet settings-primary-link" href="/#pricing">View plans <ArrowRight size={15} /></a></>}
           </div>
+          {(paymentError || paymentNotice) && <div className="settings-card-body">{paymentError && <p role="alert" className="profile-error">{paymentError}</p>}{paymentNotice && <p role="status" className="settings-helper-copy">{paymentNotice}</p>}</div>}
         </div>
         <h2 className="settings-section-heading">Payment history</h2>
         <div className="settings-card settings-history-card">

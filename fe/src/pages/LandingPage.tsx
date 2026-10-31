@@ -42,9 +42,12 @@ export function LandingPage() {
   const [paymentError, setPaymentError] = useState("");
 
   useEffect(() => {
-    if (window.location.hash === "#pricing") {
+    if (window.location.hash.startsWith("#pricing")) {
+      const pricingTarget = window.location.hash === "#pricing"
+        ? "pricing"
+        : window.location.hash.slice(1);
       requestAnimationFrame(() => {
-        document.getElementById("pricing")?.scrollIntoView({ block: "start" });
+        document.getElementById(pricingTarget)?.scrollIntoView({ block: "start" });
       });
     }
 
@@ -491,7 +494,7 @@ export function LandingPage() {
               Try Quill free <ArrowRight size={15} />
             </button>
           </article>
-          <article className="pricing-card" data-scroll-reveal data-reveal-delay="1">
+          <article className="pricing-card" id="pricing-basic" data-scroll-reveal data-reveal-delay="1">
             <div className="pricing-plan-name">Basic</div>
             <p className="pricing-plan-description">
               For everyday repository questions and focused coding tasks.
@@ -541,7 +544,7 @@ export function LandingPage() {
               </button>
             )}
           </article>
-          <article className="pricing-card pricing-card-featured" data-scroll-reveal data-reveal-delay="2">
+          <article className="pricing-card pricing-card-featured" id="pricing-pro" data-scroll-reveal data-reveal-delay="2">
             <div className="pricing-popular">MORE CAPACITY</div>
             <div className="pricing-plan-name">Pro</div>
             <p className="pricing-plan-description">

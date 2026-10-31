@@ -11,7 +11,7 @@
 .pricing-coming-pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; padding: 8px 11px; border: 1px solid rgba(255,137,31,.2); border-radius: 999px; color: #e8b27f; background: rgba(255,137,31,.07); font-size: 11px; }
 .pricing-coming-pill span { width: 6px; height: 6px; border-radius: 50%; background: var(--home-orange); box-shadow: 0 0 9px rgba(255,137,31,.7); }
 .pricing-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
-.pricing-card { position: relative; display: flex; flex-direction: column; min-height: 424px; padding: 27px; border: 1px solid var(--home-line); border-radius: 14px; background: linear-gradient(150deg, rgba(255,255,255,.045), rgba(255,255,255,.018)); box-shadow: 0 18px 54px rgba(0,0,0,.16); }
+.pricing-card { position: relative; display: flex; flex-direction: column; min-height: 424px; padding: 27px; border: 1px solid var(--home-line); border-radius: 14px; background: linear-gradient(150deg, rgba(255,255,255,.045), rgba(255,255,255,.018)); box-shadow: 0 18px 54px rgba(0,0,0,.16); scroll-margin-top: 100px; }
 .pricing-card-featured { border-color: rgba(255,137,31,.43); background: radial-gradient(ellipse at 100% 0%, rgba(255,137,31,.12), transparent 48%), linear-gradient(150deg, rgba(255,255,255,.055), rgba(255,255,255,.02)); }
 .pricing-popular { position: absolute; top: 0; right: 24px; padding: 7px 10px; border-radius: 0 0 7px 7px; color: #201308; background: var(--home-orange); font-size: 8px; font-weight: 800; letter-spacing: .12em; }
 .pricing-plan-name { color: #f3f3f1; font-size: 17px; font-weight: 700; }
