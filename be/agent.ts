@@ -659,17 +659,8 @@ export async function runAgent(session: Session, parentSignal?: AbortSignal) {
           );
           continue;
         }
-
-        const repoName = session.repoFullName.split("/").pop() || "repository";
-        const greeting = `Hi! How can I help with the ${repoName} repository today?`;
-        session.messages.push({ role: "assistant", content: greeting });
-        publish(session.id, {
-          type: "message",
-          data: { role: "assistant", content: greeting },
-        });
-        setStatus(session, "done");
-        await saveSession(session);
-        return;
+        // Conversation intents now fall through to the LLM call below
+        // so even greetings get a natural, contextual response.
       }
 
       const agentRun = await startAgentRun(session.id, "openai", MODEL);
